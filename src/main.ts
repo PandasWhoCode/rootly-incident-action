@@ -1,4 +1,11 @@
 import * as core from '@actions/core'
+import { createAlert } from './alert'
+import { createIncident } from './incident'
+import { getServiceId } from './service'
+import { getGroupId } from './group'
+import { getEnvironmentId } from './environment'
+import { getSeverityId } from './severity'
+import { getIncidentTypeId } from './incidentType'
 
 /**
  * The main function for the action.
@@ -7,12 +14,14 @@ import * as core from '@actions/core'
  */
 export async function run(): Promise<void> {
   try {
-    const service: string = core.getInput('service')
-    const group: string = core.getInput('group')
-    const environment: string = core.getInput('environment')
     const severity: string = core.getInput('severity')
     const title: string = core.getInput('title')
-    const createAlert: boolean = core.getInput('create-alert') == 'true'
+    const summary: string = core.getInput('summary')
+    const services: string[] = core.getInput('services').split(',')
+    const groups: string[] = core.getInput('groups').split(',')
+    const environments: string[] = core.getInput('environments').split(',')
+    const incidentTypes: string[] = core.getInput('incident-types').split(',')
+    const createAlertFlag: boolean = core.getInput('create-alert') == 'true'
 
     // The API key is secret and shall not be logged in any way.
     // The API key shall be used during requests but never logged or stored.
@@ -20,18 +29,71 @@ export async function run(): Promise<void> {
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
     core.debug(`Title: ${title}`)
+    core.debug(`Summary: ${summary}`)
     core.debug(`Severity: ${severity}`)
     core.debug(`Service: ${service}`)
     core.debug(`Group: ${group}`)
     core.debug(`Environment: ${environment}`)
-    core.debug(`Create Alert: ${createAlert}`)
-    core.debug(`API Key Length: ${apiKey.length}`)
+    core.debug(`Create Alert: ${createAlertFlag}`)
 
-    // Do things
-    alertId = createAlert ? 'fake-alert-id' : ''
+    // Set up service IDs
+    const serviceIds: string[] = []
+    for (const service of services) {
+      const serviceId = await getServiceId(service, apiKey)
+      serviceIds.push(serviceId)
+    }
+
+    // Set up group IDs
+    const groupIds: string[] = []
+    for (const group of groups) {
+      const groupId = await getGroupId(group, apiKey)
+      groupIds.push(groupId)
+    }
+
+    // Set up environment IDs
+    const environmentIds: string[] = []
+    for (const environment of environments) {
+      const environmentId = await getEnvironmentId(environment, apiKey)
+      environmentIds.push(environmentId)
+    }
+
+    // Set up incident type IDs
+    const incidentTypeIds: string[] = []
+    for (const incidentType of incidentTypes) {
+      const incidentTypeId = await getIncidentTypeId(incidentType, apiKey)
+      incidentTypeIds.push(incidentTypeId)
+    }
+
+    // Set up severity ID
+    const severityId = await getSeverityId(severity, apiKey)
+
+    // Create the alert
+    let alertId = ''
+    if (createAlertFlag) {
+      alertId = await createAlert(
+        summary,
+        serviceIds,
+        groupIds,
+        environmentIds,
+        apiKey
+      )
+    }
+
+    // Create the incident
+    const incidentId = await createIncident(
+      title,
+      summary,
+      severityId,
+      alertId,
+      serviceIds,
+      groupIds,
+      environmentIds,
+      incidentTypeIds,
+      apiKey
+    )
 
     // Set outputs for other workflow steps to use
-    core.setOutput('incident-id', 'fake-incident-id')
+    core.setOutput('incident-id', incidentId)
     core.setOutput('alert-id', alertId)
   } catch (error) {
     // Fail the workflow run if an error occurs

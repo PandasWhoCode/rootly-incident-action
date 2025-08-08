@@ -57,12 +57,12 @@ jobs:
         id: test-action
         uses: ./
         with:
-          title: "My Test Incident"
-          service: "my-rootly-service"
-          group: "my-rootly-group"
-          environment: "production"
-          severity: "low"
-          create-alert: "false"
+          title: 'My Test Incident'
+          service: 'my-rootly-service'
+          group: 'my-rootly-group'
+          environment: 'production'
+          severity: 'low'
+          create-alert: 'false'
           api-token: ${{ secrets.TEST_ROOTLY_API_KEY }}
         env:
           ACTIONS_STEP_DEBUG: true

@@ -9,22 +9,34 @@ branding:
 
 # Define your inputs here.
 inputs:
+  services:
+    description:
+      The comma-separated names of the services to create the incident for.
+    required: true
+    default: 'my-rootly-service'
+  groups:
+    description:
+      The comma-separated names of the groups to create the incident for.
+    required: true
+    default: 'my-rootly-group'
+  environments:
+    description:
+      The comma-separated names of the environments to create the incident for.
+    required: true
+    default: 'production'
+  incident-types:
+    description:
+      The comma-separated names of the incident types to create the incident
+      for.
+    required: false
   title:
     description: The title of the incident.
     required: true
     default: 'My Incident Title'
-  service:
-    description: The name of the service to create the incident for.
-    required: true
-    default: 'my-rootly-service'
-  group:
-    description: The name of the group to create the incident for.
-    required: true
-    default: 'my-rootly-group'
-  environment:
-    description: The environment for the incident.
-    required: true
-    default: 'production'
+  summary:
+    description: The description of the incident.
+    required: false
+    default: 'My Incident Description'
   severity:
     description: The severity of the incident.
     required: true
