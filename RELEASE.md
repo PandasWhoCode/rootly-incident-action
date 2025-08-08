@@ -11,16 +11,16 @@ following steps:
 1. **Retrieving the latest release tag:** The script starts by fetching the most
    recent SemVer release tag of the current branch, by looking at the local data
    available in your repository.
-2. **Prompting for a new release tag:** The user is then prompted to enter a new
+1. **Prompting for a new release tag:** The user is then prompted to enter a new
    release tag. To assist with this, the script displays the tag retrieved in
    the previous step, and validates the format of the inputted tag (vX.X.X). The
    user is also reminded to update the version field in package.json.
-3. **Tagging the new release:** The script then tags a new release and syncs the
+1. **Tagging the new release:** The script then tags a new release and syncs the
    separate major tag (e.g. v1, v2) with the new release tag (e.g. v1.0.0,
    v2.1.2). When the user is creating a new major release, the script
    auto-detects this and creates a `releases/v#` branch for the previous major
    version.
-4. **Pushing changes to remote:** Finally, the script pushes the necessary
+1. **Pushing changes to remote:** Finally, the script pushes the necessary
    commits, tags and branches to the remote repository. From here, you will need
    to create a new release in GitHub so users can easily reference the new tags
    in their workflows.
@@ -34,7 +34,7 @@ missing or non-compliant licenses. This workflow is initially disabled. To
 enable the workflow, follow the below steps.
 
 1. Open [`licensed.yml`](./.github/workflows/licensed.yml)
-2. Uncomment the following lines:
+1. Uncomment the following lines:
 
    ```yaml
    # pull_request:
@@ -45,7 +45,7 @@ enable the workflow, follow the below steps.
    #     - main
    ```
 
-3. Save and commit the changes
+1. Save and commit the changes
 
 Once complete, this workflow will run any time a pull request is created or
 changes pushed directly to `main`. If the workflow detects any dependencies with

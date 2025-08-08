@@ -19,16 +19,22 @@ Please be respectful and constructive in all interactions.
 ### Development Setup
 
 1. **Fork the repository** on GitHub
-2. **Clone your fork** locally:
+
+1. **Clone your fork** locally:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/rootly-incident-action.git
    cd rootly-incident-action
    ```
-3. **Install dependencies**:
+
+1. **Install dependencies**:
+
    ```bash
    npm install
    ```
-4. **Create a feature branch**:
+
+1. **Create a feature branch**:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -38,12 +44,16 @@ Please be respectful and constructive in all interactions.
 ### Making Changes
 
 1. **Write your code** following our coding standards
-2. **Add tests** for new functionality
-3. **Run the test suite** to ensure everything passes:
+
+1. **Add tests** for new functionality
+
+1. **Run the test suite** to ensure everything passes:
+
    ```bash
    npm run all
    ```
-4. **Update documentation** if needed
+
+1. **Update documentation** if needed
 
 ### Testing
 
@@ -59,10 +69,10 @@ tests:
 
 We use several tools to maintain code quality:
 
-- **ESLint**: `npm run lint` - Linting and code style
-- **Prettier**: `npm run format` - Code formatting
-- **TypeScript**: `npm run type-check` - Type checking
-- **Jest**: `npm test` - Unit testing
+1. **ESLint**: `npm run lint` - Linting and code style
+1. **Prettier**: `npm run format` - Code formatting
+1. **TypeScript**: `npm run type-check` - Type checking
+1. **Jest**: `npm test` - Unit testing
 
 Run all checks with: `npm run all`
 
@@ -81,16 +91,22 @@ This creates the `dist/index.js` file that GitHub Actions uses.
 ### Before Submitting
 
 1. **Ensure all tests pass**: `npm run all`
-2. **Update documentation** if your changes affect usage
-3. **Add entries to CHANGELOG.md** if applicable
-4. **Rebase your branch** on the latest main branch
+
+1. **Update documentation** if your changes affect usage
+
+1. **Add entries to CHANGELOG.md** if applicable
+
+1. **Rebase your branch** on the latest main branch
 
 ### Submitting Your PR
 
 1. **Push your branch** to your fork
-2. **Create a Pull Request** from your fork to the main repository
-3. **Fill out the PR template** completely
-4. **Link any related issues** using keywords like "Fixes #123"
+
+1. **Create a Pull Request** from your fork to the main repository
+
+1. **Fill out the PR template** completely
+
+1. **Link any related issues** using keywords like "Fixes #123"
 
 ### PR Requirements
 
@@ -122,7 +138,7 @@ This creates the `dist/index.js` file that GitHub Actions uses.
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 type(scope): description
 
 [optional body]
@@ -133,7 +149,7 @@ type(scope): description
 Types:
 
 - `feat`: New feature
-- `fix`: Bug fix
+- `fix`: Bugfix
 - `docs`: Documentation changes
 - `style`: Code style changes (formatting, etc.)
 - `refactor`: Code refactoring
@@ -142,7 +158,7 @@ Types:
 
 Examples:
 
-```
+```text
 feat(alert): add support for custom alert templates
 fix(incident): handle empty service arrays correctly
 docs(readme): update usage examples
@@ -151,7 +167,7 @@ test(main): add tests for error handling
 
 ## Project Structure
 
-```
+```text
 ├── src/                 # Source TypeScript files
 │   ├── main.ts         # Main action entry point
 │   ├── alert.ts        # Alert creation logic
@@ -189,7 +205,7 @@ test(main): add tests for error handling
 - Document complex logic with inline comments
 - Keep comments up-to-date with code changes
 
-### README Updates
+### Readme Updates
 
 When making changes that affect usage:
 
@@ -209,9 +225,12 @@ When making changes that affect usage:
 Releases are managed by maintainers:
 
 1. Version bumping follows semantic versioning
-2. Releases are tagged and published automatically
-3. The `dist/` directory is updated with each release
-4. Major version tags (v1, v2) are maintained for stability
+
+1. Releases are tagged and published automatically
+
+1. The `dist/` directory is updated with each release
+
+1. Major version tags (v1, v2) are maintained for stability
 
 ## Recognition
 

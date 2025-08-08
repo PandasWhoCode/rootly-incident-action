@@ -32,7 +32,9 @@ CI/CD workflows to automatically create incidents when issues are detected.
 ### Quick Start
 
 1. **Add your Rootly API token** to your repository secrets as `ROOTLY_API_KEY`
+
 2. **Create a workflow file** (e.g., `.github/workflows/incident.yml`)
+
 3. **Configure the action** with your desired parameters
 
 ### Development Setup
@@ -53,6 +55,7 @@ If you want to contribute or modify this action:
    ```
 
 3. **Run the full test suite**:
+
    ```bash
    npm run all
    ```
@@ -75,12 +78,11 @@ the following parameters:
 
 **Optional parameters:**
 
-- `services` - Comma-separated service names
-- `groups` - Comma-separated group names
-- `environments` - Comma-separated environment names
-
-- `incident-types` - Comma-separated incident type names
-- `create-alert` - Whether to create an associated alert (defaults to true)
+1. `services` - Comma-separated service names
+2. `groups` - Comma-separated group names
+3. `environments` - Comma-separated environment names
+4. `incident-types` - Comma-separated incident type names
+5. `create-alert` - Whether to create an associated alert (defaults to true)
 
 **Outputs:**
 
@@ -238,21 +240,17 @@ failure while logging errors for debugging.
 
 ### Project Structure
 
-```
-├── src/                 # TypeScript source files
+```text
+├── src/                 # Source TypeScript files
 │   ├── main.ts         # Main action entry point
 │   ├── alert.ts        # Alert creation logic
 │   ├── incident.ts     # Incident creation logic
-│   ├── service.ts      # Service ID resolution
-│   ├── group.ts        # Group ID resolution
-│   ├── environment.ts  # Environment ID resolution
-│   ├── severity.ts     # Severity ID resolution
-│   └── incidentType.ts # Incident type ID resolution
-├── __tests__/          # Jest unit tests (100% coverage)
+│   └── ...             # Other modules
+├── __tests__/          # Jest unit tests
 ├── __fixtures__/       # Test fixtures and mocks
-├── dist/               # Compiled JavaScript bundle
+├── dist/               # Compiled JavaScript (auto-generated)
 ├── action.yml          # GitHub Action metadata
-└── package.json        # Dependencies and scripts
+└── package.json        # Node.js dependencies
 ```
 
 ### Available Scripts
@@ -301,7 +299,7 @@ This project is licensed under the Apache-2.0 License - see the
 
 ## Support
 
-- **Documentation**: Check this README and [CONTRIBUTING.md](./CONTRIBUTING.md)
+- **Documentation**: Check this readme and [CONTRIBUTING.md](./CONTRIBUTING.md)
 - **Issues**: Report bugs via
   [GitHub Issues](https://github.com/pandaswhocode/rootly-incident-action/issues)
 - **Discussions**: Ask questions in
