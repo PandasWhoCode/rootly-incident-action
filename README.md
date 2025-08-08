@@ -1,4 +1,4 @@
-# Create a GitHub Action Using TypeScript
+# Rootly Incident Action
 
 [![GitHub Super-Linter](https://github.com/actions/typescript-action/actions/workflows/linter.yml/badge.svg)](https://github.com/super-linter/super-linter)
 ![CI](https://github.com/actions/typescript-action/actions/workflows/ci.yml/badge.svg)
@@ -6,51 +6,61 @@
 [![CodeQL](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml)
 [![Coverage](./badges/coverage.svg)](./badges/coverage.svg)
 
-Use this template to bootstrap the creation of a TypeScript action. :rocket:
+A GitHub Action for creating incidents and alerts in Rootly, a platform for
+incident management and response. This action integrates seamlessly with your
+CI/CD workflows to automatically create incidents when issues are detected.
 
-This repository includes compilation support, tests, a validation workflow,
-publishing, and versioning guidance.
+## Features
+
+- **Automatic Incident Creation**: Create incidents in Rootly with customizable
+  parameters
+- **Alert Management**: Optionally create alerts associated with incidents
+- **Flexible Configuration**: Support for services, groups, environments, and
+  incident types
+- **Error Handling**: Robust error handling with proper logging
+- **100% Test Coverage**: Comprehensive test suite with full coverage
+- **TypeScript**: Built with TypeScript for type safety and reliability
 
 ## Initial Setup
 
-After you've cloned the repository to your local machine or codespace, you'll
-need to perform some initial setup steps before you can develop your action.
+### Prerequisites
 
-> [!NOTE]
->
-> You'll need to have a reasonably modern version of
-> [Node.js](https://nodejs.org) handy (20.x or later should work!). If you are
-> using a version manager like [`nodenv`](https://github.com/nodenv/nodenv) or
-> [`fnm`](https://github.com/Schniz/fnm), this template has a `.node-version`
-> file at the root of the repository that can be used to automatically switch to
-> the correct version when you `cd` into the repository. Additionally, this
-> `.node-version` file is used by GitHub Actions in any `actions/setup-node`
-> actions.
+- Node.js 20.x or later (if developing locally)
+- A Rootly account with API access
+- Rootly API token stored as a GitHub secret
 
-1. :hammer_and_wrench: Install the dependencies
+### Quick Start
+
+1. **Add your Rootly API token** to your repository secrets as `ROOTLY_API_KEY`
+
+1. **Create a workflow file** (e.g., `.github/workflows/incident.yml`)
+
+1. **Configure the action** with your desired parameters
+
+### Development Setup
+
+If you want to contribute or modify this action:
+
+1. **Clone the repository**:
+
+   ```bash
+   git clone https://github.com/pandaswhocode/rootly-incident-action.git
+   cd rootly-incident-action
+   ```
+
+1. **Install dependencies**:
 
    ```bash
    npm install
    ```
 
-1. :building_construction: Package the TypeScript for distribution
+1. **Run the full test suite**:
 
    ```bash
-   npm run bundle
+   npm run all
    ```
 
-1. :white_check_mark: Run the tests
-
-   ```bash
-   $ npm test
-
-   PASS  ./index.test.js
-     ✓ throws invalid number (3ms)
-     ✓ wait 500 ms (504ms)
-     ✓ test runs (95ms)
-
-   ...
-   ```
+This will run formatting, linting, testing, coverage reporting, and bundling.
 
 ## About the Rootly Incident Action
 
@@ -62,17 +72,17 @@ the following parameters:
 
 - `title` - The incident title
 - `severity` - The incident severity level
-- `services` - Comma-separated service names
-- `groups` - Comma-separated group names
-- `environments` - Comma-separated environment names
+- `summary` - Description of the incident (defaults to "My Incident
+  Description")
 - `api-token` - Rootly API authentication token
 
 **Optional parameters:**
 
-- `summary` - Description of the incident (defaults to "My Incident
-  Description")
-- `incident-types` - Comma-separated incident type names
-- `create-alert` - Whether to create an associated alert (defaults to true)
+1. `services` - Comma-separated service names
+1. `groups` - Comma-separated group names
+1. `environments` - Comma-separated environment names
+1. `incident-types` - Comma-separated incident type names
+1. `create-alert` - Whether to create an associated alert (defaults to true)
 
 **Outputs:**
 
@@ -81,105 +91,221 @@ the following parameters:
 
 ## Usage
 
-To include the action in a workflow in another repository, you can use the
-`uses` syntax with the `@` symbol to reference a specific branch, tag, or commit
-hash.
+### Basic Usage
 
 ```yaml
-steps:
-  - name: Checkout
-    id: checkout
-    uses: actions/checkout@v4
+name: Create Rootly Incident
+on:
+  workflow_dispatch:
+    inputs:
+      severity:
+        description: 'Incident severity'
+        required: true
+        default: 'high'
+        type: choice
+        options:
+          - low
+          - medium
+          - high
+          - critical
 
-  - name: Test Local Action
-    id: test-action
-    uses: pandaswhocode/rootly-incident-action@v1 # Commit with the `v1` tag
-    with:
-      services: 'my-service'
-      groups: 'my-group'
-      environments: 'my-environment'
-      incident-types: 'my-incident-type'
-      title: 'Incident Title'
-      summary: 'Description of the incident'
-      severity: 'high'
-      create-alert: 'true'
-      api-token: ${{ secrets.ROOTLY_API_KEY }}
+jobs:
+  create-incident:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
 
-  - name: Print Output
-    id: output
-    run: |
-      echo "${{ steps.test-action.outputs.incident-id }}"
-      echo "${{ steps.test-action.outputs.alert-id }}"
+      - name: Create Rootly Incident
+        id: rootly-incident
+        uses: pandaswhocode/rootly-incident-action@v1
+        with:
+          title: 'Production Service Outage'
+          summary: 'Critical service experiencing downtime'
+          severity: ${{ inputs.severity }}
+          services: 'web-api,database'
+          groups: 'engineering,sre'
+          environments: 'production'
+          incident-types: 'outage'
+          create-alert: 'true'
+          api-token: ${{ secrets.ROOTLY_API_KEY }}
+
+      - name: Output Incident Details
+        run: |
+          echo "Incident ID: ${{ steps.rootly-incident.outputs.incident-id }}"
+          echo "Alert ID: ${{ steps.rootly-incident.outputs.alert-id }}"
 ```
 
-## Publishing a New Release
+### Advanced Usage with Conditional Logic
 
-This project includes a helper script, [`script/release`](./script/release)
-designed to streamline the process of tagging and pushing new releases for
-GitHub Actions.
+```yaml
+name: Monitor and Create Incidents
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-GitHub Actions allows users to select a specific version of the action to use,
-based on release tags. This script simplifies this process by performing the
-following steps:
+jobs:
+  test-and-monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-1. **Retrieving the latest release tag:** The script starts by fetching the most
-   recent SemVer release tag of the current branch, by looking at the local data
-   available in your repository.
-1. **Prompting for a new release tag:** The user is then prompted to enter a new
-   release tag. To assist with this, the script displays the tag retrieved in
-   the previous step, and validates the format of the inputted tag (vX.X.X). The
-   user is also reminded to update the version field in package.json.
-1. **Tagging the new release:** The script then tags a new release and syncs the
-   separate major tag (e.g. v1, v2) with the new release tag (e.g. v1.0.0,
-   v2.1.2). When the user is creating a new major release, the script
-   auto-detects this and creates a `releases/v#` branch for the previous major
-   version.
-1. **Pushing changes to remote:** Finally, the script pushes the necessary
-   commits, tags and branches to the remote repository. From here, you will need
-   to create a new release in GitHub so users can easily reference the new tags
-   in their workflows.
+      - name: Run Tests
+        id: tests
+        run: npm test
+        continue-on-error: true
 
-## Dependency License Management
-
-This template includes a GitHub Actions workflow,
-[`licensed.yml`](./.github/workflows/licensed.yml), that uses
-[Licensed](https://github.com/licensee/licensed) to check for dependencies with
-missing or non-compliant licenses. This workflow is initially disabled. To
-enable the workflow, follow the below steps.
-
-1. Open [`licensed.yml`](./.github/workflows/licensed.yml)
-1. Uncomment the following lines:
-
-   ```yaml
-   # pull_request:
-   #   branches:
-   #     - main
-   # push:
-   #   branches:
-   #     - main
-   ```
-
-1. Save and commit the changes
-
-Once complete, this workflow will run any time a pull request is created or
-changes pushed directly to `main`. If the workflow detects any dependencies with
-missing or non-compliant licenses, it will fail the workflow and provide details
-on the issue(s) found.
-
-### Updating Licenses
-
-Whenever you install or update dependencies, you can use the Licensed CLI to
-update the licenses database. To install Licensed, see the project's
-[Readme](https://github.com/licensee/licensed?tab=readme-ov-file#installation).
-
-To update the cached licenses, run the following command:
-
-```bash
-licensed cache
+      - name: Create Incident on Test Failure
+        if: steps.tests.outcome == 'failure'
+        uses: pandaswhocode/rootly-incident-action@v1
+        with:
+          title: 'Test Suite Failure in ${{ github.repository }}'
+          summary:
+            'Automated test suite failed on ${{ github.ref_name }} branch'
+          severity: 'medium'
+          services: 'ci-cd'
+          groups: 'engineering'
+          environments: 'staging'
+          incident-types: 'test-failure'
+          api-token: ${{ secrets.ROOTLY_API_KEY }}
 ```
 
-To check the status of cached licenses, run the following command:
+### Integration with Monitoring Tools
 
-```bash
-licensed status
+```yaml
+name: External Monitor Alert
+on:
+  repository_dispatch:
+    types: [monitoring-alert]
+
+jobs:
+  handle-alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Rootly Incident from Monitor
+        uses: pandaswhocode/rootly-incident-action@v1
+        with:
+          title: ${{ github.event.client_payload.title }}
+          summary: ${{ github.event.client_payload.description }}
+          severity: ${{ github.event.client_payload.severity }}
+          services: ${{ github.event.client_payload.services }}
+          groups: 'sre,on-call'
+          environments: ${{ github.event.client_payload.environment }}
+          api-token: ${{ secrets.ROOTLY_API_KEY }}
 ```
+
+## Configuration
+
+### Input Parameters
+
+| Parameter        | Required | Default                   | Description                                     |
+| ---------------- | -------- | ------------------------- | ----------------------------------------------- |
+| `api-token`      | x        | -                         | Rootly API authentication token                 |
+| `create-alert`   |          | `true`                    | Whether to create an associated alert           |
+| `environments`   |          | -                         | Comma-separated list of environment names       |
+| `groups`         |          | -                         | Comma-separated list of group names             |
+| `incident-types` |          | -                         | Comma-separated list of incident type names     |
+| `services`       |          | -                         | Comma-separated list of service names           |
+| `severity`       | x        | -                         | Incident severity (low, medium, high, critical) |
+| `summary`        | x        | "My Incident Description" | Detailed incident description                   |
+| `title`          | x        | -                         | The incident title                              |
+
+### Output Parameters
+
+| Parameter     | Description                                             |
+| ------------- | ------------------------------------------------------- |
+| `incident-id` | The ID of the created incident                          |
+| `alert-id`    | The ID of the created alert (if `create-alert` is true) |
+
+## API Integration
+
+This action integrates with the Rootly REST API to:
+
+- **Resolve service IDs** from service names
+- **Resolve group IDs** from group names
+- **Resolve environment IDs** from environment names
+- **Resolve severity IDs** from severity levels
+- **Resolve incident type IDs** from incident type names (if provided)
+- **Create alerts** with the resolved parameters
+- **Create incidents** linking to the created alert
+
+All API calls include proper error handling and will return empty strings on
+failure while logging errors for debugging.
+
+## Development
+
+### Project Structure
+
+```text
+├── src/                 # Source TypeScript files
+│   ├── main.ts         # Main action entry point
+│   ├── alert.ts        # Alert creation logic
+│   ├── incident.ts     # Incident creation logic
+│   └── ...             # Other modules
+├── __tests__/          # Jest unit tests
+├── __fixtures__/       # Test fixtures and mocks
+├── dist/               # Compiled JavaScript (auto-generated)
+├── action.yml          # GitHub Action metadata
+└── package.json        # Node.js dependencies
+```
+
+### Available Scripts
+
+- `npm run all` - Run the complete pipeline (format, lint, test, coverage,
+  bundle)
+- `npm test` - Run Jest unit tests
+- `npm run lint` - Run ESLint
+- `npm run format` - Run Prettier formatting
+- `npm run bundle` - Build the action bundle
+- `npm run coverage` - Generate coverage reports
+
+### Testing
+
+The project maintains **100% test coverage** with comprehensive unit tests
+covering:
+
+- All API integration functions
+- Success and error scenarios
+- Input validation and edge cases
+- Main workflow orchestration
+- Mock isolation and Jest ESM compatibility
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for
+detailed guidelines on:
+
+- Development setup and workflow
+- Code quality standards
+- Testing requirements
+- Pull request process
+- Coding standards and conventions
+
+## Security
+
+- **API tokens** are handled securely and never logged
+- **Input validation** prevents injection attacks
+- **Error handling** avoids exposing sensitive information
+- **Dependencies** are regularly updated and scanned
+
+## License
+
+This project is licensed under the Apache-2.0 License - see the
+[LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: Check this readme and [CONTRIBUTING.md](./CONTRIBUTING.md)
+- **Issues**: Report bugs via
+  [GitHub Issues](https://github.com/pandaswhocode/rootly-incident-action/issues)
+- **Discussions**: Ask questions in
+  [GitHub Discussions](https://github.com/pandaswhocode/rootly-incident-action/discussions)
+
+## Changelog
+
+The release notes will be automatically generated when a new version is
+released.
