@@ -1,0 +1,51 @@
+name: Rootly Incident Action
+description: Create an incident using the Rootly REST API.
+author: PandasWhoCode
+
+# Add your action's branding here. This will appear on the GitHub Marketplace.
+branding:
+  icon: sunrise
+  color: 'blue'
+
+# Define your inputs here.
+inputs:
+  title:
+    description: The title of the incident.
+    required: true
+    default: 'My Incident Title'
+  service:
+    description: The name of the service to create the incident for.
+    required: true
+    default: 'my-rootly-service'
+  group:
+    description: The name of the group to create the incident for.
+    required: true
+    default: 'my-rootly-group'
+  environment:
+    description: The environment for the incident.
+    required: true
+    default: 'production'
+  severity:
+    description: The severity of the incident.
+    required: true
+    default: 'Sev0'
+  create-alert:
+    description: Whether to create an alert for the incident.
+    required: false
+    default: 'true'
+
+# Define your secrets here.
+secrets:
+  rootly_api_key:
+    required: true
+
+# Define your outputs here.
+outputs:
+  incident-id:
+    description: The ID of the created incident for API usage.
+  alert-id:
+    description: The ID of the created alert for API usage.
+
+runs:
+  using: node24
+  main: dist/index.js
