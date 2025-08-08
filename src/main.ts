@@ -1,11 +1,11 @@
 import * as core from '@actions/core'
-import { createAlert } from './alert'
-import { createIncident } from './incident'
-import { getServiceId } from './service'
-import { getGroupId } from './group'
-import { getEnvironmentId } from './environment'
-import { getSeverityId } from './severity'
-import { getIncidentTypeId } from './incidentType'
+import { createAlert } from './alert.js'
+import { createIncident } from './incident.js'
+import { getServiceId } from './service.js'
+import { getGroupId } from './group.js'
+import { getEnvironmentId } from './environment.js'
+import { getSeverityId } from './severity.js'
+import { getIncidentTypeId } from './incidentType.js'
 
 /**
  * The main function for the action.
@@ -31,9 +31,9 @@ export async function run(): Promise<void> {
     core.debug(`Title: ${title}`)
     core.debug(`Summary: ${summary}`)
     core.debug(`Severity: ${severity}`)
-    core.debug(`Service: ${service}`)
-    core.debug(`Group: ${group}`)
-    core.debug(`Environment: ${environment}`)
+    core.debug(`Service: ${services}`)
+    core.debug(`Group: ${groups}`)
+    core.debug(`Environment: ${environments}`)
     core.debug(`Create Alert: ${createAlertFlag}`)
 
     // Set up service IDs

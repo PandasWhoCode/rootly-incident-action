@@ -10,7 +10,6 @@ import * as core from '../__fixtures__/core.js'
 
 // Mocks should be declared before the module being tested is imported.
 jest.unstable_mockModule('@actions/core', () => core)
-jest.unstable_mockModule('../src/wait.js', () => ({ wait }))
 
 // The module being tested should be imported dynamically. This ensures that the
 // mocks are used in place of any actual dependencies.
@@ -19,10 +18,16 @@ const { run } = await import('../src/main.js')
 describe('main.ts', () => {
   beforeEach(() => {
     // Set the action's inputs as return values from core.getInput().
-    core.getInput.mockImplementation(() => '500')
-
-    // Mock the wait function so that it does not actually wait.
-    wait.mockImplementation(() => Promise.resolve('done!'))
+    core.getInput
+      .mockReturnValueOnce('critical') // severity
+      .mockReturnValueOnce('Test Incident') // title
+      .mockReturnValueOnce('This is a test incident.') // summary
+      .mockReturnValueOnce('Service1,Service2') // services
+      .mockReturnValueOnce('Group1,Group2') // groups
+      .mockReturnValueOnce('Environment1,Environment2') // environments
+      .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
+      .mockReturnValueOnce('true') // create-alert
+      .mockReturnValueOnce('test-api-key') // api key
   })
 
   afterEach(() => {
@@ -43,19 +48,16 @@ describe('main.ts', () => {
 
   it('Sets a failed status', async () => {
     // Clear the getInput mock and return an invalid value.
-    core.getInput.mockClear().mockReturnValueOnce('this is not a number')
-
-    // Clear the wait mock and return a rejected promise.
-    wait
+    core.getInput
       .mockClear()
-      .mockRejectedValueOnce(new Error('milliseconds is not a number'))
+      .mockReturnValueOnce('nothing configured')
+
+      // Clear the mocks
+      .mockClear()
 
     await run()
 
     // Verify that the action was marked as failed.
-    expect(core.setFailed).toHaveBeenNthCalledWith(
-      1,
-      'milliseconds is not a number'
-    )
+    expect(core.setFailed).toHaveBeenNthCalledWith(1, 'Nothing Configured.')
   })
 })
