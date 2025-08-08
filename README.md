@@ -54,8 +54,6 @@ need to perform some initial setup steps before you can develop your action.
 
 ## About the Rootly Incident Action
 
-## About the Rootly Incident Action
-
 This GitHub Action allows you to create incidents and alerts in Rootly, a
 platform for incident management and response. The action creates incidents with
 the following parameters:
