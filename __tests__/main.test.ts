@@ -1,63 +1,349 @@
 /**
  * Unit tests for the action's main functionality, src/main.ts
- *
- * To mock dependencies in ESM, you can create fixtures that export mock
- * functions and objects. For example, the core module is mocked in this test,
- * so that the actual '@actions/core' module is not imported.
  */
 import { jest } from '@jest/globals'
 import * as core from '../__fixtures__/core.js'
 
-// Mocks should be declared before the module being tested is imported.
-jest.unstable_mockModule('@actions/core', () => core)
-
-// The module being tested should be imported dynamically. This ensures that the
-// mocks are used in place of any actual dependencies.
-const { run } = await import('../src/main.js')
-
 describe('main.ts', () => {
+  // Create fresh mock functions for each test suite
+  let createAlertMock: jest.MockedFunction<
+    (
+      apiKey: string,
+      summary: string,
+      serviceIds?: string[],
+      groupIds?: string[],
+      environmentIds?: string[]
+    ) => Promise<string>
+  >
+  let createIncidentMock: jest.MockedFunction<
+    (
+      apiKey: string,
+      title: string,
+      summary: string,
+      severityId: string,
+      alertId: string,
+      serviceIds: string[],
+      groupIds: string[],
+      environmentIds: string[],
+      incidentTypeIds: string[]
+    ) => Promise<string>
+  >
+  let getServiceIdMock: jest.MockedFunction<
+    (serviceName: string, apiKey: string) => Promise<string>
+  >
+  let getGroupIdMock: jest.MockedFunction<
+    (groupName: string, apiKey: string) => Promise<string>
+  >
+  let getEnvironmentIdMock: jest.MockedFunction<
+    (environmentName: string, apiKey: string) => Promise<string>
+  >
+  let getSeverityIdMock: jest.MockedFunction<
+    (severityName: string, apiKey: string) => Promise<string>
+  >
+  let getIncidentTypeIdMock: jest.MockedFunction<
+    (incidentTypeName: string, apiKey: string) => Promise<string>
+  >
+
+  beforeAll(() => {
+    // Set up mocks once before all tests
+    createAlertMock = jest.fn()
+    createIncidentMock = jest.fn()
+    getServiceIdMock = jest.fn()
+    getGroupIdMock = jest.fn()
+    getEnvironmentIdMock = jest.fn()
+    getSeverityIdMock = jest.fn()
+    getIncidentTypeIdMock = jest.fn()
+
+    // Mock all modules
+    jest.unstable_mockModule('@actions/core', () => core)
+    jest.unstable_mockModule('../src/alert.js', () => ({
+      createAlert: createAlertMock
+    }))
+    jest.unstable_mockModule('../src/incident.js', () => ({
+      createIncident: createIncidentMock
+    }))
+    jest.unstable_mockModule('../src/service.js', () => ({
+      getServiceId: getServiceIdMock
+    }))
+    jest.unstable_mockModule('../src/group.js', () => ({
+      getGroupId: getGroupIdMock
+    }))
+    jest.unstable_mockModule('../src/environment.js', () => ({
+      getEnvironmentId: getEnvironmentIdMock
+    }))
+    jest.unstable_mockModule('../src/severity.js', () => ({
+      getSeverityId: getSeverityIdMock
+    }))
+    jest.unstable_mockModule('../src/incidentType.js', () => ({
+      getIncidentTypeId: getIncidentTypeIdMock
+    }))
+  })
+
   beforeEach(() => {
-    // Set the action's inputs as return values from core.getInput().
-    core.getInput
-      .mockReturnValueOnce('critical') // severity
-      .mockReturnValueOnce('Test Incident') // title
-      .mockReturnValueOnce('This is a test incident.') // summary
-      .mockReturnValueOnce('Service1,Service2') // services
-      .mockReturnValueOnce('Group1,Group2') // groups
-      .mockReturnValueOnce('Environment1,Environment2') // environments
-      .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
-      .mockReturnValueOnce('true') // create-alert
-      .mockReturnValueOnce('test-api-key') // api key
+    // Reset all mocks before each test
+    jest.clearAllMocks()
+    createAlertMock.mockClear()
+    createIncidentMock.mockClear()
+    getServiceIdMock.mockClear()
+    getGroupIdMock.mockClear()
+    getEnvironmentIdMock.mockClear()
+    getSeverityIdMock.mockClear()
+    getIncidentTypeIdMock.mockClear()
+
+    // Set default resolved values
+    createAlertMock.mockResolvedValue('alert-123')
+    createIncidentMock.mockResolvedValue('incident-456')
+    getServiceIdMock.mockResolvedValue('service-123')
+    getGroupIdMock.mockResolvedValue('group-123')
+    getEnvironmentIdMock.mockResolvedValue('env-123')
+    getSeverityIdMock.mockResolvedValue('severity-123')
+    getIncidentTypeIdMock.mockResolvedValue('type-123')
   })
 
-  afterEach(() => {
-    jest.resetAllMocks()
+  describe('Alert creation enabled', () => {
+    it('Runs successfully with alert creation enabled', async () => {
+      // Set up input mocks
+      core.getInput
+        .mockReturnValueOnce('critical') // severity
+        .mockReturnValueOnce('Test Incident') // title
+        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('Service1,Service2') // services
+        .mockReturnValueOnce('Group1,Group2') // groups
+        .mockReturnValueOnce('Environment1,Environment2') // environments
+        .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
+        .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('test-api-key') // api key
+
+      // Import and run the main function
+      const { run } = await import('../src/main.js')
+      await run()
+
+      // Verify all service functions were called
+      expect(getServiceIdMock).toHaveBeenCalledTimes(2)
+      expect(getServiceIdMock).toHaveBeenCalledWith('Service1', 'test-api-key')
+      expect(getServiceIdMock).toHaveBeenCalledWith('Service2', 'test-api-key')
+
+      expect(getGroupIdMock).toHaveBeenCalledTimes(2)
+      expect(getGroupIdMock).toHaveBeenCalledWith('Group1', 'test-api-key')
+      expect(getGroupIdMock).toHaveBeenCalledWith('Group2', 'test-api-key')
+
+      expect(getEnvironmentIdMock).toHaveBeenCalledTimes(2)
+      expect(getEnvironmentIdMock).toHaveBeenCalledWith(
+        'Environment1',
+        'test-api-key'
+      )
+      expect(getEnvironmentIdMock).toHaveBeenCalledWith(
+        'Environment2',
+        'test-api-key'
+      )
+
+      expect(getIncidentTypeIdMock).toHaveBeenCalledTimes(2)
+      expect(getIncidentTypeIdMock).toHaveBeenCalledWith(
+        'IncidentType1',
+        'test-api-key'
+      )
+      expect(getIncidentTypeIdMock).toHaveBeenCalledWith(
+        'IncidentType2',
+        'test-api-key'
+      )
+
+      expect(getSeverityIdMock).toHaveBeenCalledWith('critical', 'test-api-key')
+
+      // Verify alert was created
+      expect(createAlertMock).toHaveBeenCalledWith(
+        'test-api-key',
+        'This is a test incident.',
+        ['service-123', 'service-123'],
+        ['group-123', 'group-123'],
+        ['env-123', 'env-123']
+      )
+
+      // Verify incident was created
+      expect(createIncidentMock).toHaveBeenCalledWith(
+        'test-api-key',
+        'Test Incident',
+        'This is a test incident.',
+        'severity-123',
+        'alert-123',
+        ['service-123', 'service-123'],
+        ['group-123', 'group-123'],
+        ['env-123', 'env-123'],
+        ['type-123', 'type-123']
+      )
+
+      // Verify outputs were set
+      expect(core.setOutput).toHaveBeenCalledWith('incident-id', 'incident-456')
+      expect(core.setOutput).toHaveBeenCalledWith('alert-id', 'alert-123')
+    })
   })
 
-  it('Sets the time output', async () => {
-    await run()
+  describe('Alert creation disabled', () => {
+    it('Runs successfully with alert creation disabled', async () => {
+      // Set up input mocks for alert creation disabled
+      core.getInput
+        .mockReturnValueOnce('high') // severity
+        .mockReturnValueOnce('Test Incident') // title
+        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('Service1') // services
+        .mockReturnValueOnce('Group1') // groups
+        .mockReturnValueOnce('Environment1') // environments
+        .mockReturnValueOnce('IncidentType1') // incident-types
+        .mockReturnValueOnce('false') // create-alert
+        .mockReturnValueOnce('test-api-key') // api key
 
-    // Verify the time output was set.
-    expect(core.setOutput).toHaveBeenNthCalledWith(
-      1,
-      'time',
-      // Simple regex to match a time string in the format HH:MM:SS.
-      expect.stringMatching(/^\d{2}:\d{2}:\d{2}/)
-    )
+      // Import and run the main function
+      const { run } = await import('../src/main.js')
+      await run()
+
+      // Verify alert was not created
+      expect(createAlertMock).not.toHaveBeenCalled()
+
+      // Verify incident was created without alert ID
+      expect(createIncidentMock).toHaveBeenCalledWith(
+        'test-api-key',
+        'Test Incident',
+        'This is a test incident.',
+        'severity-123',
+        '',
+        ['service-123'],
+        ['group-123'],
+        ['env-123'],
+        ['type-123']
+      )
+
+      // Verify outputs were set
+      expect(core.setOutput).toHaveBeenCalledWith('incident-id', 'incident-456')
+      expect(core.setOutput).toHaveBeenCalledWith('alert-id', '')
+    })
   })
 
-  it('Sets a failed status', async () => {
-    // Clear the getInput mock and return an invalid value.
-    core.getInput
-      .mockClear()
-      .mockReturnValueOnce('nothing configured')
+  describe('Error handling', () => {
+    it('Handles errors and sets failed status', async () => {
+      // Make one of the service calls fail
+      getServiceIdMock.mockRejectedValueOnce(new Error('Service lookup failed'))
 
-      // Clear the mocks
-      .mockClear()
+      // Set up input mocks
+      core.getInput
+        .mockReturnValueOnce('critical') // severity
+        .mockReturnValueOnce('Test Incident') // title
+        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('Service1,Service2') // services
+        .mockReturnValueOnce('Group1,Group2') // groups
+        .mockReturnValueOnce('Environment1,Environment2') // environments
+        .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
+        .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('test-api-key') // api key
 
-    await run()
+      // Import and run the main function
+      const { run } = await import('../src/main.js')
+      await run()
 
-    // Verify that the action was marked as failed.
-    expect(core.setFailed).toHaveBeenNthCalledWith(1, 'Nothing Configured.')
+      // Verify that the action was marked as failed
+      expect(core.setFailed).toHaveBeenCalledWith('Service lookup failed')
+    })
+
+    it('Handles non-Error exceptions', async () => {
+      // Make one of the service calls throw a non-Error object
+      getSeverityIdMock.mockRejectedValueOnce('String error')
+
+      // Set up input mocks
+      core.getInput
+        .mockReturnValueOnce('critical') // severity
+        .mockReturnValueOnce('Test Incident') // title
+        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('Service1,Service2') // services
+        .mockReturnValueOnce('Group1,Group2') // groups
+        .mockReturnValueOnce('Environment1,Environment2') // environments
+        .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
+        .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('test-api-key') // api key
+
+      // Import and run the main function
+      const { run } = await import('../src/main.js')
+      await run()
+
+      // Verify that setFailed was not called since the error is not an Error instance
+      expect(core.setFailed).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Empty input handling', () => {
+    it('Handles empty input arrays correctly', async () => {
+      // Set up input mocks for empty arrays
+      core.getInput
+        .mockReturnValueOnce('low') // severity
+        .mockReturnValueOnce('Test Incident') // title
+        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('') // services (empty)
+        .mockReturnValueOnce('') // groups (empty)
+        .mockReturnValueOnce('') // environments (empty)
+        .mockReturnValueOnce('') // incident-types (empty)
+        .mockReturnValueOnce('false') // create-alert
+        .mockReturnValueOnce('test-api-key') // api key
+
+      // Import and run the main function
+      const { run } = await import('../src/main.js')
+      await run()
+
+      // Verify that service/group/environment/type lookups were made with empty strings
+      // Note: empty string split by comma results in [''] not [], so functions are called once with empty string
+      expect(getServiceIdMock).toHaveBeenCalledTimes(1)
+      expect(getServiceIdMock).toHaveBeenCalledWith('', 'test-api-key')
+
+      expect(getGroupIdMock).toHaveBeenCalledTimes(1)
+      expect(getGroupIdMock).toHaveBeenCalledWith('', 'test-api-key')
+
+      expect(getEnvironmentIdMock).toHaveBeenCalledTimes(1)
+      expect(getEnvironmentIdMock).toHaveBeenCalledWith('', 'test-api-key')
+
+      expect(getIncidentTypeIdMock).toHaveBeenCalledTimes(1)
+      expect(getIncidentTypeIdMock).toHaveBeenCalledWith('', 'test-api-key')
+
+      // Verify incident was created with arrays containing one empty string result each
+      expect(createIncidentMock).toHaveBeenCalledWith(
+        'test-api-key',
+        'Test Incident',
+        'This is a test incident.',
+        'severity-123',
+        '',
+        ['service-123'], // Result from getServiceId('', 'test-api-key')
+        ['group-123'], // Result from getGroupId('', 'test-api-key')
+        ['env-123'], // Result from getEnvironmentId('', 'test-api-key')
+        ['type-123'] // Result from getIncidentTypeId('', 'test-api-key')
+      )
+    })
+  })
+
+  describe('Debug logging', () => {
+    it('Logs debug information correctly', async () => {
+      // Set up input mocks
+      core.getInput
+        .mockReturnValueOnce('critical') // severity
+        .mockReturnValueOnce('Test Incident') // title
+        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('Service1,Service2') // services
+        .mockReturnValueOnce('Group1,Group2') // groups
+        .mockReturnValueOnce('Environment1,Environment2') // environments
+        .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
+        .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('test-api-key') // api key
+
+      // Import and run the main function
+      const { run } = await import('../src/main.js')
+      await run()
+
+      // Verify debug logs were called
+      expect(core.debug).toHaveBeenCalledWith('Title: Test Incident')
+      expect(core.debug).toHaveBeenCalledWith(
+        'Summary: This is a test incident.'
+      )
+      expect(core.debug).toHaveBeenCalledWith('Severity: critical')
+      expect(core.debug).toHaveBeenCalledWith('Service: Service1,Service2')
+      expect(core.debug).toHaveBeenCalledWith('Group: Group1,Group2')
+      expect(core.debug).toHaveBeenCalledWith(
+        'Environment: Environment1,Environment2'
+      )
+      expect(core.debug).toHaveBeenCalledWith('Create Alert: true')
+    })
   })
 })

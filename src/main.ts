@@ -25,7 +25,7 @@ export async function run(): Promise<void> {
 
     // The API key is secret and shall not be logged in any way.
     // The API key shall be used during requests but never logged or stored.
-    const apiKey: string = core.getInput('api-key')
+    const apiKey: string = core.getInput('api-token')
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
     core.debug(`Title: ${title}`)
