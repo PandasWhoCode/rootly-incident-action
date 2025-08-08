@@ -77,6 +77,7 @@ jobs:
       - name: Print Output
         id: output
         run: |
+          # shellcheck disable=SC2129
           echo "## Action Outputs" >> "${GITHUB_STEP_SUMMARY}}"
           echo "Alert ID: ${{ steps.test-action.outputs.alert-id }}" >> "${GITHUB_STEP_SUMMARY}}"
           echo "Incident ID: ${{ steps.test-action.outputs.incident-id }}" >> "${GITHUB_STEP_SUMMARY}}"
