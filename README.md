@@ -33,9 +33,9 @@ CI/CD workflows to automatically create incidents when issues are detected.
 
 1. **Add your Rootly API token** to your repository secrets as `ROOTLY_API_KEY`
 
-2. **Create a workflow file** (e.g., `.github/workflows/incident.yml`)
+1. **Create a workflow file** (e.g., `.github/workflows/incident.yml`)
 
-3. **Configure the action** with your desired parameters
+1. **Configure the action** with your desired parameters
 
 ### Development Setup
 
@@ -48,13 +48,13 @@ If you want to contribute or modify this action:
    cd rootly-incident-action
    ```
 
-2. **Install dependencies**:
+1. **Install dependencies**:
 
    ```bash
    npm install
    ```
 
-3. **Run the full test suite**:
+1. **Run the full test suite**:
 
    ```bash
    npm run all
@@ -79,10 +79,10 @@ the following parameters:
 **Optional parameters:**
 
 1. `services` - Comma-separated service names
-2. `groups` - Comma-separated group names
-3. `environments` - Comma-separated environment names
-4. `incident-types` - Comma-separated incident type names
-5. `create-alert` - Whether to create an associated alert (defaults to true)
+1. `groups` - Comma-separated group names
+1. `environments` - Comma-separated environment names
+1. `incident-types` - Comma-separated incident type names
+1. `create-alert` - Whether to create an associated alert (defaults to true)
 
 **Outputs:**
 

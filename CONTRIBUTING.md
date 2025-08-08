@@ -55,15 +55,13 @@ Please be respectful and constructive in all interactions.
 
 1. **Update documentation** if needed
 
-### Testing
+### Test Guidelines
 
-We maintain 100% test coverage. Please ensure your changes include appropriate
-tests:
-
-- **Unit tests**: Located in `__tests__/` directory
-- **Test fixtures**: Located in `__fixtures__/` directory
-- **Run tests**: `npm test`
-- **Check coverage**: `npm run test:coverage`
+- Follow the existing test patterns in `__tests__/`
+- Use descriptive test names
+- Test both success and error cases
+- Mock external dependencies appropriately
+- Use Jest's built-in matchers when possible
 
 ### Code Quality
 
