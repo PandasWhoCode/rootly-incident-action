@@ -27247,17 +27247,237 @@ function requireCore () {
 var coreExports = requireCore();
 
 /**
- * Waits for a number of milliseconds.
+ * Create an alert using the Rootly REST API.
  *
- * @param milliseconds The number of milliseconds to wait.
- * @returns Resolves with 'done!' after the wait is over.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @param {string} summary - The summary of the alert.
+ * @param {string[]} serviceIds - The IDs of the services to create the alert for.
+ * @param {string[]} groupIds - The IDs of the groups to create the alert for.
+ * @param {string[]} environmentIds - The IDs of the environments to create the alert for.
+ * @returns {string} The ID of the alert.
+ *
  */
-async function wait(milliseconds) {
-    return new Promise((resolve) => {
-        if (isNaN(milliseconds))
-            throw new Error('milliseconds is not a number');
-        setTimeout(() => resolve('done!'), milliseconds);
+async function createAlert(apiKey, summary, serviceIds, groupIds, environmentIds) {
+    // Quick helper for nullish coalescing
+    const safeArray = (arr) => arr ?? [];
+    const url = 'https://api.rootly.com/v1/alerts';
+    const alertBody = JSON.stringify({
+        data: {
+            type: 'alerts',
+            attributes: {
+                summary: summary,
+                noise: 'noise',
+                status: 'triggered',
+                description: summary,
+                service_ids: safeArray(serviceIds),
+                group_ids: safeArray(groupIds),
+                environment_ids: safeArray(environmentIds)
+            }
+        }
     });
+    const options = {
+        method: 'POST',
+        headers: {
+            Authorization: 'Bearer' + apiKey,
+            'Content-Type': 'application/vnd.api+json'
+        },
+        body: alertBody
+    };
+    try {
+        const response = await fetch(url, options);
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Create an incident using the Rootly REST API.
+ *
+ * @param {string} apiKey - The API key to use for authentication.
+ * @param {string} title - The title of the incident.
+ * @param {string} summary - The description of the incident.
+ * @param {string} severityId - The ID of the severity of the incident.
+ * @param {string} alertId - The ID of the created alert. (If an alert was created.)
+ * @param {string[]} serviceIds - The IDs of the services to create the incident for.
+ * @param {string[]} groupIds - The IDs of the groups to create the incident for.
+ * @param {string[]} environmentIds - The IDs of the environments to create the incident for.
+ * @param {string[]} incidentTypeIds - The IDs of the incident types to create the incident for.
+ * @returns {string} The ID of the incident.
+ *
+ */
+async function createIncident(apiKey, title, summary, severityId, alertId, serviceIds, groupIds, environmentIds, incidentTypeIds) {
+    // Quick helper for nullish coalescing
+    const safeArray = (arr) => arr ?? [];
+    const url = 'https://api.rootly.com/v1/incidents';
+    const incidentBody = JSON.stringify({
+        data: {
+            attributes: {
+                private: false,
+                title: title,
+                summary: summary,
+                severity_id: severityId,
+                alert_ids: [alertId ?? ''],
+                environment_ids: safeArray(environmentIds),
+                incident_type_ids: safeArray(incidentTypeIds),
+                service_ids: safeArray(serviceIds),
+                group_ids: safeArray(groupIds)
+            },
+            type: 'incidents'
+        }
+    });
+    const options = {
+        method: 'POST',
+        headers: {
+            Authorization: 'Bearer ' + apiKey,
+            'Content-Type': 'application/vnd.api+json'
+        },
+        body: incidentBody
+    };
+    try {
+        const response = await fetch(url, options);
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Get the service ID using the Rootly REST API.
+ *
+ * @param {string} service - The name of the service.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the service.
+ */
+async function getServiceId(service, apiKey) {
+    const apiServiceName = service.replace(' ', '%20');
+    const url = 'https://api.rootly.com/v1/services?filter%5Bname%5D=' + apiServiceName;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + apiKey },
+        body: undefined
+    };
+    try {
+        const response = await fetch(url, options);
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Get the group ID using the Rootly REST API.
+ *
+ * @param {string} group - The name of the group.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the group.
+ */
+async function getGroupId(group, apiKey) {
+    const apiGroupName = group.replace(' ', '%20');
+    const url = 'https://api.rootly.com/v1/teams?filter%5Bname%5D=' + apiGroupName;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + apiKey },
+        body: undefined
+    };
+    try {
+        const response = await fetch(url, options);
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Retrieve the environment ID using the Rootly REST API.
+ *
+ * @param {string} environment - The name of the environment.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the environment.
+ */
+async function getEnvironmentId(environment, apiKey) {
+    const apiEnvironmentName = environment.replace(' ', '%20');
+    const url = 'https://api.rootly.com/v1/environments?filter%5Bname%5D=' +
+        apiEnvironmentName;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + apiKey },
+        body: undefined
+    };
+    try {
+        const response = await fetch(url, options);
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Get the service ID using the Rootly REST API.
+ *
+ * @param {string} severity - The name of the severity.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the severity.
+ */
+async function getSeverityId(severity, apiKey) {
+    const apiSeverityName = severity.replace(' ', '%20');
+    const url = 'https://api.rootly.com/v1/severities?filter%5Bname%5D=' + apiSeverityName;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + apiKey },
+        body: undefined
+    };
+    try {
+        const response = await fetch(url, options);
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Retrieve an incident type using the Rootly REST API.
+ *
+ * @param {string} incidentType - The name of the incident type.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the incident type.
+ */
+async function getIncidentTypeId(incidentType, apiKey) {
+    const apiIncidentTypeName = incidentType.replace(' ', '%20');
+    const url = 'https://api.rootly.com/v1/incident_types?filter%5Bname%5D=' +
+        apiIncidentTypeName;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + apiKey },
+        body: undefined
+    };
+    try {
+        const response = await fetch(url, options);
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
 }
 
 /**
@@ -27267,15 +27487,61 @@ async function wait(milliseconds) {
  */
 async function run() {
     try {
-        const ms = coreExports.getInput('milliseconds');
+        const severity = coreExports.getInput('severity');
+        const title = coreExports.getInput('title');
+        const summary = coreExports.getInput('summary');
+        const services = coreExports.getInput('services').split(',');
+        const groups = coreExports.getInput('groups').split(',');
+        const environments = coreExports.getInput('environments').split(',');
+        const incidentTypes = coreExports.getInput('incident-types').split(',');
+        const createAlertFlag = coreExports.getInput('create-alert') == 'true';
+        // The API key is secret and shall not be logged in any way.
+        // The API key shall be used during requests but never logged or stored.
+        const apiKey = coreExports.getInput('api-key');
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-        coreExports.debug(`Waiting ${ms} milliseconds ...`);
-        // Log the current timestamp, wait, then log the new timestamp
-        coreExports.debug(new Date().toTimeString());
-        await wait(parseInt(ms, 10));
-        coreExports.debug(new Date().toTimeString());
+        coreExports.debug(`Title: ${title}`);
+        coreExports.debug(`Summary: ${summary}`);
+        coreExports.debug(`Severity: ${severity}`);
+        coreExports.debug(`Service: ${services}`);
+        coreExports.debug(`Group: ${groups}`);
+        coreExports.debug(`Environment: ${environments}`);
+        coreExports.debug(`Create Alert: ${createAlertFlag}`);
+        // Set up service IDs
+        const serviceIds = [];
+        for (const service of services) {
+            const serviceId = await getServiceId(service, apiKey);
+            serviceIds.push(serviceId);
+        }
+        // Set up group IDs
+        const groupIds = [];
+        for (const group of groups) {
+            const groupId = await getGroupId(group, apiKey);
+            groupIds.push(groupId);
+        }
+        // Set up environment IDs
+        const environmentIds = [];
+        for (const environment of environments) {
+            const environmentId = await getEnvironmentId(environment, apiKey);
+            environmentIds.push(environmentId);
+        }
+        // Set up incident type IDs
+        const incidentTypeIds = [];
+        for (const incidentType of incidentTypes) {
+            const incidentTypeId = await getIncidentTypeId(incidentType, apiKey);
+            incidentTypeIds.push(incidentTypeId);
+        }
+        // Set up severity ID
+        const severityId = await getSeverityId(severity, apiKey);
+        // Create the alert
+        let alertId = '';
+        if (createAlertFlag) {
+            alertId = await createAlert(apiKey, summary, serviceIds, groupIds, environmentIds);
+        }
+        // Create the incident
+        const incidentId = await createIncident(apiKey, title, summary, severityId, alertId, serviceIds, groupIds, environmentIds, incidentTypeIds);
         // Set outputs for other workflow steps to use
-        coreExports.setOutput('time', new Date().toTimeString());
+        coreExports.setOutput('incident-id', incidentId);
+        coreExports.setOutput('alert-id', alertId);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
