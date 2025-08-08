@@ -27497,7 +27497,7 @@ async function run() {
         const createAlertFlag = coreExports.getInput('create-alert') == 'true';
         // The API key is secret and shall not be logged in any way.
         // The API key shall be used during requests but never logged or stored.
-        const apiKey = coreExports.getInput('api-key');
+        const apiKey = coreExports.getInput('api-token');
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
         coreExports.debug(`Title: ${title}`);
         coreExports.debug(`Summary: ${summary}`);

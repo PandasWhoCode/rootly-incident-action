@@ -52,144 +52,36 @@ need to perform some initial setup steps before you can develop your action.
    ...
    ```
 
-## Update the Action Metadata
+## About the Rootly Incident Action
 
-The [`action.yml`](action.yml) file defines metadata about your action, such as
-input(s) and output(s). For details about this file, see
-[Metadata syntax for GitHub Actions](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions).
+## About the Rootly Incident Action
 
-When you copy this repository, update `action.yml` with the name, description,
-inputs, and outputs for your action.
+This GitHub Action allows you to create incidents and alerts in Rootly, a
+platform for incident management and response. The action creates incidents with
+the following parameters:
 
-## Update the Action Code
+**Required parameters:**
 
-The [`src/`](./src/) directory is the heart of your action! This contains the
-source code that will be run when your action is invoked. You can replace the
-contents of this directory with your own code.
+- `title` - The incident title
+- `severity` - The incident severity level
+- `services` - Comma-separated service names
+- `groups` - Comma-separated group names
+- `environments` - Comma-separated environment names
+- `api-token` - Rootly API authentication token
 
-There are a few things to keep in mind when writing your action code:
+**Optional parameters:**
 
-- Most GitHub Actions toolkit and CI/CD operations are processed asynchronously.
-  In `main.ts`, you will see that the action is run in an `async` function.
+- `summary` - Description of the incident (defaults to "My Incident
+  Description")
+- `incident-types` - Comma-separated incident type names
+- `create-alert` - Whether to create an associated alert (defaults to true)
 
-  ```javascript
-  import * as core from '@actions/core'
-  //...
+**Outputs:**
 
-  async function run() {
-    try {
-      //...
-    } catch (error) {
-      core.setFailed(error.message)
-    }
-  }
-  ```
-
-  For more information about the GitHub Actions toolkit, see the
-  [documentation](https://github.com/actions/toolkit/blob/main/README.md).
-
-So, what are you waiting for? Go ahead and start customizing your action!
-
-1. Create a new branch
-
-   ```bash
-   git checkout -b releases/v1
-   ```
-
-1. Replace the contents of `src/` with your action code
-1. Add tests to `__tests__/` for your source code
-1. Format, test, and build the action
-
-   ```bash
-   npm run all
-   ```
-
-   > This step is important! It will run [`rollup`](https://rollupjs.org/) to
-   > build the final JavaScript action code with all dependencies included. If
-   > you do not run this step, your action will not work correctly when it is
-   > used in a workflow.
-
-1. (Optional) Test your action locally
-
-   The [`@github/local-action`](https://github.com/github/local-action) utility
-   can be used to test your action locally. It is a simple command-line tool
-   that "stubs" (or simulates) the GitHub Actions Toolkit. This way, you can run
-   your TypeScript action locally without having to commit and push your changes
-   to a repository.
-
-   The `local-action` utility can be run in the following ways:
-   - Visual Studio Code Debugger
-
-     Make sure to review and, if needed, update
-     [`.vscode/launch.json`](./.vscode/launch.json)
-
-   - Terminal/Command Prompt
-
-     ```bash
-     # npx @github/local action <action-yaml-path> <entrypoint> <dotenv-file>
-     npx @github/local-action . src/main.ts .env
-     ```
-
-   You can provide a `.env` file to the `local-action` CLI to set environment
-   variables used by the GitHub Actions Toolkit. For example, setting inputs and
-   event payload data used by your action. For more information, see the example
-   file, [`.env.example`](./.env.example), and the
-   [GitHub Actions Documentation](https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables).
-
-1. Commit your changes
-
-   ```bash
-   git add .
-   git commit -m "My first action is ready!"
-   ```
-
-1. Push them to your repository
-
-   ```bash
-   git push -u origin releases/v1
-   ```
-
-1. Create a pull request and get feedback on your action
-1. Merge the pull request into the `main` branch
-
-Your action is now published! :rocket:
-
-For information about versioning your action, see
-[Versioning](https://github.com/actions/toolkit/blob/main/docs/action-versioning.md)
-in the GitHub Actions toolkit.
-
-## Validate the Action
-
-You can now validate the action by referencing it in a workflow file. For
-example, [`ci.yml`](./.github/workflows/ci.yml) demonstrates how to reference an
-action in the same repository.
-
-```yaml
-steps:
-  - name: Checkout
-    id: checkout
-    uses: actions/checkout@v4
-
-  - name: Test Local Action
-    id: test-action
-    uses: ./
-    with:
-      milliseconds: 1000
-
-  - name: Print Output
-    id: output
-    run: echo "${{ steps.test-action.outputs.time }}"
-```
-
-For example workflow runs, check out the
-[Actions tab](https://github.com/actions/typescript-action/actions)! :rocket:
+- `incident-id` - ID of the created incident for API usage
+- `alert-id` - ID of the created alert (if created) for API usage
 
 ## Usage
-
-After testing, you can create version tag(s) that developers can use to
-reference different stable versions of your action. For more information, see
-[Versioning](https://github.com/actions/toolkit/blob/main/docs/action-versioning.md)
-in the GitHub Actions toolkit.
 
 To include the action in a workflow in another repository, you can use the
 `uses` syntax with the `@` symbol to reference a specific branch, tag, or commit
@@ -203,13 +95,23 @@ steps:
 
   - name: Test Local Action
     id: test-action
-    uses: actions/typescript-action@v1 # Commit with the `v1` tag
+    uses: pandaswhocode/rootly-incident-action@v1 # Commit with the `v1` tag
     with:
-      milliseconds: 1000
+      services: 'my-service'
+      groups: 'my-group'
+      environments: 'my-environment'
+      incident-types: 'my-incident-type'
+      title: 'Incident Title'
+      summary: 'Description of the incident'
+      severity: 'high'
+      create-alert: 'true'
+      api-token: ${{ secrets.ROOTLY_API_KEY }}
 
   - name: Print Output
     id: output
-    run: echo "${{ steps.test-action.outputs.time }}"
+    run: |
+      echo "${{ steps.test-action.outputs.incident-id }}"
+      echo "${{ steps.test-action.outputs.alert-id }}"
 ```
 
 ## Publishing a New Release
