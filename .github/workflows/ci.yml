@@ -62,7 +62,8 @@ jobs:
           environments: 'production'
           incident-types: 'my-incident-type'
           title: 'My Test Incident'
-          summary: 'This is a test incident created by the GitHub Actions workflow.'
+          summary:
+            'This is a test incident created by the GitHub Actions workflow.'
           severity: 'low'
           create-alert: 'true'
           api-token: ${{ secrets.TEST_ROOTLY_API_KEY }}
@@ -71,4 +72,7 @@ jobs:
 
       - name: Print Output
         id: output
-        run: echo "${{ steps.test-action.outputs.time }}"
+        run: |
+          echo "## Action Outputs" >> "${GITHUB_STEP_SUMMARY}}"
+          echo "Alert ID: ${{ steps.test-action.outputs.alert-id }}" >> "${GITHUB_STEP_SUMMARY}}"
+          echo "Incident ID: ${{ steps.test-action.outputs.incident-id }}" >> "${GITHUB_STEP_SUMMARY}}"
