@@ -6,13 +6,17 @@
 [![CodeQL](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/actions/typescript-action/actions/workflows/codeql-analysis.yml)
 [![Coverage](./badges/coverage.svg)](./badges/coverage.svg)
 
-A GitHub Action for creating incidents and alerts in Rootly, a platform for incident management and response. This action integrates seamlessly with your CI/CD workflows to automatically create incidents when issues are detected.
+A GitHub Action for creating incidents and alerts in Rootly, a platform for
+incident management and response. This action integrates seamlessly with your
+CI/CD workflows to automatically create incidents when issues are detected.
 
 ## Features
 
-- **Automatic Incident Creation**: Create incidents in Rootly with customizable parameters
+- **Automatic Incident Creation**: Create incidents in Rootly with customizable
+  parameters
 - **Alert Management**: Optionally create alerts associated with incidents
-- **Flexible Configuration**: Support for services, groups, environments, and incident types
+- **Flexible Configuration**: Support for services, groups, environments, and
+  incident types
 - **Error Handling**: Robust error handling with proper logging
 - **100% Test Coverage**: Comprehensive test suite with full coverage
 - **TypeScript**: Built with TypeScript for type safety and reliability
@@ -36,12 +40,14 @@ A GitHub Action for creating incidents and alerts in Rootly, a platform for inci
 If you want to contribute or modify this action:
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/pandaswhocode/rootly-incident-action.git
    cd rootly-incident-action
    ```
 
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
@@ -55,13 +61,16 @@ This will run formatting, linting, testing, coverage reporting, and bundling.
 
 ## About the Rootly Incident Action
 
-This GitHub Action allows you to create incidents and alerts in Rootly, a platform for incident management and response. The action creates incidents with the following parameters:
+This GitHub Action allows you to create incidents and alerts in Rootly, a
+platform for incident management and response. The action creates incidents with
+the following parameters:
 
 **Required parameters:**
 
 - `title` - The incident title
 - `severity` - The incident severity level
-- `summary` - Description of the incident (defaults to "My Incident Description")
+- `summary` - Description of the incident (defaults to "My Incident
+  Description")
 - `api-token` - Rootly API authentication token
 
 **Optional parameters:**
@@ -153,7 +162,8 @@ jobs:
         uses: pandaswhocode/rootly-incident-action@v1
         with:
           title: 'Test Suite Failure in ${{ github.repository }}'
-          summary: 'Automated test suite failed on ${{ github.ref_name }} branch'
+          summary:
+            'Automated test suite failed on ${{ github.ref_name }} branch'
           severity: 'medium'
           services: 'ci-cd'
           groups: 'engineering'
@@ -191,7 +201,7 @@ jobs:
 ### Input Parameters
 
 | Parameter        | Required | Default                   | Description                                     |
-|------------------|----------|---------------------------|-------------------------------------------------|
+| ---------------- | -------- | ------------------------- | ----------------------------------------------- |
 | `api-token`      | x        | -                         | Rootly API authentication token                 |
 | `create-alert`   |          | `true`                    | Whether to create an associated alert           |
 | `environments`   |          | -                         | Comma-separated list of environment names       |
@@ -205,7 +215,7 @@ jobs:
 ### Output Parameters
 
 | Parameter     | Description                                             |
-|---------------|---------------------------------------------------------|
+| ------------- | ------------------------------------------------------- |
 | `incident-id` | The ID of the created incident                          |
 | `alert-id`    | The ID of the created alert (if `create-alert` is true) |
 
@@ -214,14 +224,15 @@ jobs:
 This action integrates with the Rootly REST API to:
 
 - **Resolve service IDs** from service names
-- **Resolve group IDs** from group names  
+- **Resolve group IDs** from group names
 - **Resolve environment IDs** from environment names
 - **Resolve severity IDs** from severity levels
 - **Resolve incident type IDs** from incident type names (if provided)
 - **Create alerts** with the resolved parameters
 - **Create incidents** linking to the created alert
 
-All API calls include proper error handling and will return empty strings on failure while logging errors for debugging.
+All API calls include proper error handling and will return empty strings on
+failure while logging errors for debugging.
 
 ## Development
 
@@ -246,7 +257,8 @@ All API calls include proper error handling and will return empty strings on fai
 
 ### Available Scripts
 
-- `npm run all` - Run the complete pipeline (format, lint, test, coverage, bundle)
+- `npm run all` - Run the complete pipeline (format, lint, test, coverage,
+  bundle)
 - `npm test` - Run Jest unit tests
 - `npm run lint` - Run ESLint
 - `npm run format` - Run Prettier formatting
@@ -255,7 +267,8 @@ All API calls include proper error handling and will return empty strings on fai
 
 ### Testing
 
-The project maintains **100% test coverage** with comprehensive unit tests covering:
+The project maintains **100% test coverage** with comprehensive unit tests
+covering:
 
 - All API integration functions
 - Success and error scenarios
@@ -265,7 +278,8 @@ The project maintains **100% test coverage** with comprehensive unit tests cover
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines on:
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for
+detailed guidelines on:
 
 - Development setup and workflow
 - Code quality standards
@@ -282,14 +296,18 @@ We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for de
 
 ## License
 
-This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache-2.0 License - see the
+[LICENSE](LICENSE) file for details.
 
 ## Support
 
 - **Documentation**: Check this README and [CONTRIBUTING.md](./CONTRIBUTING.md)
-- **Issues**: Report bugs via [GitHub Issues](https://github.com/pandaswhocode/rootly-incident-action/issues)
-- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/pandaswhocode/rootly-incident-action/discussions)
+- **Issues**: Report bugs via
+  [GitHub Issues](https://github.com/pandaswhocode/rootly-incident-action/issues)
+- **Discussions**: Ask questions in
+  [GitHub Discussions](https://github.com/pandaswhocode/rootly-incident-action/discussions)
 
 ## Changelog
 
-The release notes will be automatically generated when a new version is released.
+The release notes will be automatically generated when a new version is
+released.

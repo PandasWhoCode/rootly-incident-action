@@ -1,10 +1,12 @@
 # Contributing to Rootly Incident Action
 
-Thank you for your interest in contributing to the Rootly Incident Action! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to the Rootly Incident Action! This
+document provides guidelines and information for contributors.
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our Code of Conduct. Please be respectful and constructive in all interactions.
+By participating in this project, you agree to abide by our Code of Conduct.
+Please be respectful and constructive in all interactions.
 
 ## Getting Started
 
@@ -45,7 +47,8 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
 
 ### Testing
 
-We maintain 100% test coverage. Please ensure your changes include appropriate tests:
+We maintain 100% test coverage. Please ensure your changes include appropriate
+tests:
 
 - **Unit tests**: Located in `__tests__/` directory
 - **Test fixtures**: Located in `__fixtures__/` directory
@@ -128,6 +131,7 @@ type(scope): description
 ```
 
 Types:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -137,6 +141,7 @@ Types:
 - `chore`: Maintenance tasks
 
 Examples:
+
 ```
 feat(alert): add support for custom alert templates
 fix(incident): handle empty service arrays correctly
@@ -187,6 +192,7 @@ test(main): add tests for error handling
 ### README Updates
 
 When making changes that affect usage:
+
 - Update code examples
 - Add new input/output parameters
 - Update feature descriptions
@@ -210,6 +216,7 @@ Releases are managed by maintainers:
 ## Recognition
 
 Contributors will be recognized in:
+
 - GitHub contributors list
 - Release notes for significant contributions
 - Special mentions for major features or fixes
