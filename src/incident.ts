@@ -1,19 +1,22 @@
+import { ApiResponse } from './apiResponse.js'
+
 /**
  * Create an incident using the Rootly REST API.
  *
+ * @param {string} apiKey - The API key to use for authentication.
  * @param {string} title - The title of the incident.
- * @param {string} description - The description of the incident.
+ * @param {string} summary - The description of the incident.
  * @param {string} severityId - The ID of the severity of the incident.
  * @param {string} alertId - The ID of the created alert. (If an alert was created.)
  * @param {string[]} serviceIds - The IDs of the services to create the incident for.
  * @param {string[]} groupIds - The IDs of the groups to create the incident for.
  * @param {string[]} environmentIds - The IDs of the environments to create the incident for.
  * @param {string[]} incidentTypeIds - The IDs of the incident types to create the incident for.
- * @param {string} apiKey - The API key to use for authentication.
  * @returns {string} The ID of the incident.
  *
  */
 export async function createIncident(
+  apiKey: string,
   title: string,
   summary: string,
   severityId: string,
@@ -21,8 +24,7 @@ export async function createIncident(
   serviceIds?: string[],
   groupIds?: string[],
   environmentIds?: string[],
-  incidentTypeIds?: string[],
-  apiKey: string
+  incidentTypeIds?: string[]
 ): Promise<string> {
   // Quick helper for nullish coalescing
   const safeArray = <T>(arr?: T[]) => arr ?? []
@@ -55,9 +57,10 @@ export async function createIncident(
 
   try {
     const response = await fetch(url, options)
-    const data = await response.json()
+    const data = (await response.json()) as ApiResponse
     return data.data[0].id
   } catch (error) {
     console.error(error)
+    return ''
   }
 }

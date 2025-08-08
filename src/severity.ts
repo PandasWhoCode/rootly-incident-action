@@ -1,3 +1,5 @@
+import { ApiResponse } from './apiResponse.js'
+
 /**
  * Get the service ID using the Rootly REST API.
  *
@@ -20,7 +22,7 @@ export async function getSeverityId(
 
   try {
     const response = await fetch(url, options)
-    const data = await response.json()
+    const data = (await response.json()) as ApiResponse
     return data.data[0].id
   } catch (error) {
     console.error(error)

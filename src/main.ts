@@ -71,16 +71,17 @@ export async function run(): Promise<void> {
     let alertId = ''
     if (createAlertFlag) {
       alertId = await createAlert(
+        apiKey,
         summary,
         serviceIds,
         groupIds,
-        environmentIds,
-        apiKey
+        environmentIds
       )
     }
 
     // Create the incident
     const incidentId = await createIncident(
+      apiKey,
       title,
       summary,
       severityId,
@@ -88,8 +89,7 @@ export async function run(): Promise<void> {
       serviceIds,
       groupIds,
       environmentIds,
-      incidentTypeIds,
-      apiKey
+      incidentTypeIds
     )
 
     // Set outputs for other workflow steps to use
