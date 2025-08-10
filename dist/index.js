@@ -27251,13 +27251,14 @@ var coreExports = requireCore();
  *
  * @param {string} apiKey - The API key to use for authentication.
  * @param {string} summary - The summary of the alert.
+ * @param {string} details - The details of the alert.
  * @param {string[]} serviceIds - The IDs of the services to create the alert for.
  * @param {string[]} groupIds - The IDs of the groups to create the alert for.
  * @param {string[]} environmentIds - The IDs of the environments to create the alert for.
  * @returns {string} The ID of the alert.
  *
  */
-async function createAlert(apiKey, summary, serviceIds, groupIds, environmentIds) {
+async function createAlert(apiKey, summary, details, serviceIds, groupIds, environmentIds) {
     // Quick helper for nullish coalescing
     const safeArray = (arr) => arr ?? [];
     const url = 'https://api.rootly.com/v1/alerts';
@@ -27268,7 +27269,7 @@ async function createAlert(apiKey, summary, serviceIds, groupIds, environmentIds
                 summary: summary,
                 noise: 'noise',
                 status: 'triggered',
-                description: summary,
+                description: details,
                 service_ids: safeArray(serviceIds),
                 group_ids: safeArray(groupIds),
                 environment_ids: safeArray(environmentIds)
@@ -27489,7 +27490,7 @@ async function run() {
     try {
         const severity = coreExports.getInput('severity');
         const title = coreExports.getInput('title');
-        const summary = coreExports.getInput('summary');
+        const details = coreExports.getInput('summary');
         const services = coreExports.getInput('services').split(',');
         const groups = coreExports.getInput('groups').split(',');
         const environments = coreExports.getInput('environments').split(',');
@@ -27500,7 +27501,7 @@ async function run() {
         const apiKey = coreExports.getInput('api-token');
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
         coreExports.debug(`Title: ${title}`);
-        coreExports.debug(`Summary: ${summary}`);
+        coreExports.debug(`Details: ${details}`);
         coreExports.debug(`Severity: ${severity}`);
         coreExports.debug(`Service: ${services}`);
         coreExports.debug(`Group: ${groups}`);
@@ -27535,10 +27536,10 @@ async function run() {
         // Create the alert
         let alertId = '';
         if (createAlertFlag) {
-            alertId = await createAlert(apiKey, summary, serviceIds, groupIds, environmentIds);
+            alertId = await createAlert(apiKey, title, details, serviceIds, groupIds, environmentIds);
         }
         // Create the incident
-        const incidentId = await createIncident(apiKey, title, summary, severityId, alertId, serviceIds, groupIds, environmentIds, incidentTypeIds);
+        const incidentId = await createIncident(apiKey, title, details, severityId, alertId, serviceIds, groupIds, environmentIds, incidentTypeIds);
         // Set outputs for other workflow steps to use
         coreExports.setOutput('incident-id', incidentId);
         coreExports.setOutput('alert-id', alertId);

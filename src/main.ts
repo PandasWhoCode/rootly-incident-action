@@ -16,7 +16,7 @@ export async function run(): Promise<void> {
   try {
     const severity: string = core.getInput('severity')
     const title: string = core.getInput('title')
-    const summary: string = core.getInput('summary')
+    const details: string = core.getInput('summary')
     const services: string[] = core.getInput('services').split(',')
     const groups: string[] = core.getInput('groups').split(',')
     const environments: string[] = core.getInput('environments').split(',')
@@ -29,7 +29,7 @@ export async function run(): Promise<void> {
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
     core.debug(`Title: ${title}`)
-    core.debug(`Summary: ${summary}`)
+    core.debug(`Details: ${details}`)
     core.debug(`Severity: ${severity}`)
     core.debug(`Service: ${services}`)
     core.debug(`Group: ${groups}`)
@@ -72,7 +72,8 @@ export async function run(): Promise<void> {
     if (createAlertFlag) {
       alertId = await createAlert(
         apiKey,
-        summary,
+        title,
+        details,
         serviceIds,
         groupIds,
         environmentIds
@@ -83,7 +84,7 @@ export async function run(): Promise<void> {
     const incidentId = await createIncident(
       apiKey,
       title,
-      summary,
+      details,
       severityId,
       alertId,
       serviceIds,

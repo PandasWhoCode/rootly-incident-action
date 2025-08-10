@@ -10,6 +10,7 @@ describe('main.ts', () => {
     (
       apiKey: string,
       summary: string,
+      details: string,
       serviceIds?: string[],
       groupIds?: string[],
       environmentIds?: string[]
@@ -106,7 +107,7 @@ describe('main.ts', () => {
       core.getInput
         .mockReturnValueOnce('critical') // severity
         .mockReturnValueOnce('Test Incident') // title
-        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('This is a test incident.') // details
         .mockReturnValueOnce('Service1,Service2') // services
         .mockReturnValueOnce('Group1,Group2') // groups
         .mockReturnValueOnce('Environment1,Environment2') // environments
@@ -152,6 +153,7 @@ describe('main.ts', () => {
       // Verify alert was created
       expect(createAlertMock).toHaveBeenCalledWith(
         'test-api-key',
+        'Test Incident',
         'This is a test incident.',
         ['service-123', 'service-123'],
         ['group-123', 'group-123'],
@@ -320,7 +322,7 @@ describe('main.ts', () => {
       core.getInput
         .mockReturnValueOnce('critical') // severity
         .mockReturnValueOnce('Test Incident') // title
-        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('This is a test incident.') // Details
         .mockReturnValueOnce('Service1,Service2') // services
         .mockReturnValueOnce('Group1,Group2') // groups
         .mockReturnValueOnce('Environment1,Environment2') // environments
@@ -335,7 +337,7 @@ describe('main.ts', () => {
       // Verify debug logs were called
       expect(core.debug).toHaveBeenCalledWith('Title: Test Incident')
       expect(core.debug).toHaveBeenCalledWith(
-        'Summary: This is a test incident.'
+        'Details: This is a test incident.'
       )
       expect(core.debug).toHaveBeenCalledWith('Severity: critical')
       expect(core.debug).toHaveBeenCalledWith('Service: Service1,Service2')

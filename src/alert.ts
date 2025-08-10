@@ -5,6 +5,7 @@ import { ApiResponse } from './apiResponse.js'
  *
  * @param {string} apiKey - The API key to use for authentication.
  * @param {string} summary - The summary of the alert.
+ * @param {string} details - The details of the alert.
  * @param {string[]} serviceIds - The IDs of the services to create the alert for.
  * @param {string[]} groupIds - The IDs of the groups to create the alert for.
  * @param {string[]} environmentIds - The IDs of the environments to create the alert for.
@@ -14,6 +15,7 @@ import { ApiResponse } from './apiResponse.js'
 export async function createAlert(
   apiKey: string,
   summary: string,
+  details: string,
   serviceIds?: string[],
   groupIds?: string[],
   environmentIds?: string[]
@@ -29,7 +31,7 @@ export async function createAlert(
         summary: summary,
         noise: 'noise',
         status: 'triggered',
-        description: summary,
+        description: details,
         service_ids: safeArray(serviceIds),
         group_ids: safeArray(groupIds),
         environment_ids: safeArray(environmentIds)

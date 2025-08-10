@@ -13,6 +13,7 @@ const { createAlert } = await import('../src/alert.js')
 describe('alert.ts', () => {
   const mockApiKey = 'test-api-key'
   const mockSummary = 'Test alert summary'
+  const mockDetails = 'Test alert details'
   const mockServiceIds = ['service-1', 'service-2']
   const mockGroupIds = ['group-1', 'group-2']
   const mockEnvironmentIds = ['env-1', 'env-2']
@@ -37,6 +38,7 @@ describe('alert.ts', () => {
     const result = await createAlert(
       mockApiKey,
       mockSummary,
+      mockDetails,
       mockServiceIds,
       mockGroupIds,
       mockEnvironmentIds
@@ -55,7 +57,7 @@ describe('alert.ts', () => {
             summary: mockSummary,
             noise: 'noise',
             status: 'triggered',
-            description: mockSummary,
+            description: mockDetails,
             service_ids: mockServiceIds,
             group_ids: mockGroupIds,
             environment_ids: mockEnvironmentIds
@@ -79,7 +81,7 @@ describe('alert.ts', () => {
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
 
-    const result = await createAlert(mockApiKey, mockSummary)
+    const result = await createAlert(mockApiKey, mockSummary, mockDetails)
 
     expect(mockFetch).toHaveBeenCalledWith('https://api.rootly.com/v1/alerts', {
       method: 'POST',
@@ -94,7 +96,7 @@ describe('alert.ts', () => {
             summary: mockSummary,
             noise: 'noise',
             status: 'triggered',
-            description: mockSummary,
+            description: mockDetails,
             service_ids: [],
             group_ids: [],
             environment_ids: []
@@ -155,6 +157,7 @@ describe('alert.ts', () => {
     const result = await createAlert(
       mockApiKey,
       mockSummary,
+      mockDetails,
       undefined,
       undefined,
       undefined
@@ -170,7 +173,7 @@ describe('alert.ts', () => {
               summary: mockSummary,
               noise: 'noise',
               status: 'triggered',
-              description: mockSummary,
+              description: mockDetails,
               service_ids: [],
               group_ids: [],
               environment_ids: []
