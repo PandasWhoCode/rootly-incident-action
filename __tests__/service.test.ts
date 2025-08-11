@@ -4,15 +4,15 @@
 import { jest } from '@jest/globals'
 import * as core from '@actions/core'
 
-// Mock the global fetch function
-const mockFetch = jest.fn<typeof globalThis.fetch>()
-global.fetch = mockFetch
-
 // Mock the @actions/core module before any imports
 jest.unstable_mockModule('@actions/core', () => ({
   warning: jest.fn(),
   error: jest.fn()
 }))
+
+// Mock the global fetch function
+const mockFetch = jest.fn<typeof globalThis.fetch>()
+global.fetch = mockFetch
 
 // Import the module being tested dynamically
 const core = await import('@actions/core')
