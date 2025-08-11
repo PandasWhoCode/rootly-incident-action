@@ -2,12 +2,20 @@
  * Unit tests for the service functionality, src/service.ts
  */
 import { jest } from '@jest/globals'
+import * as core from '@actions/core'
 
 // Mock the global fetch function
 const mockFetch = jest.fn<typeof globalThis.fetch>()
 global.fetch = mockFetch
 
+// Mock the @actions/core module before any imports
+jest.unstable_mockModule('@actions/core', () => ({
+  warning: jest.fn(),
+  error: jest.fn()
+}))
+
 // Import the module being tested dynamically
+const core = await import('@actions/core')
 const { getServiceId } = await import('../src/service.js')
 
 describe('service.ts', () => {
@@ -38,8 +46,7 @@ describe('service.ts', () => {
       'https://api.rootly.com/v1/services?filter%5Bname%5D=Test%20Service',
       {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + mockApiKey },
-        body: undefined
+        headers: { Authorization: 'Bearer ' + mockApiKey }
       }
     )
     expect(result).toBe(mockServiceId)
@@ -119,5 +126,44 @@ describe('service.ts', () => {
     expect(result).toBe('service-empty')
 
     consoleSpy.mockRestore()
+  })
+
+  it('Returns empty string when API returns non-ok response', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await getServiceId(mockServiceName, mockApiKey)
+
+    expect(result).toBe('')
+    expect(consoleSpy).toHaveBeenCalled()
+
+    consoleSpy.mockRestore()
+  })
+
+  it('Returns empty string when service not found', async () => {
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: []
+      })
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+    const coreWarningSpy = jest
+      .spyOn(core, 'warning')
+      .mockImplementation(() => {})
+
+    const result = await getServiceId(mockServiceName, mockApiKey)
+
+    expect(result).toBe('')
+    expect(coreWarningSpy).toHaveBeenCalledWith(
+      `Service '${mockServiceName}' not found`
+    )
+
+    coreWarningSpy.mockRestore()
   })
 })
