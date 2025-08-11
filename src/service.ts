@@ -23,7 +23,7 @@ export async function getServiceId(
   try {
     const response = await fetch(url, options)
     const data = (await response.json()) as ApiResponse
-    return data.data.id
+    return data?.data?.id || 'FAILED'
   } catch (error) {
     console.error(error)
     return ''
