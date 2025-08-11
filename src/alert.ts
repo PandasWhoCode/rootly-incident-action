@@ -50,7 +50,7 @@ export async function createAlert(
   try {
     const response = await fetch(url, options)
     const data = (await response.json()) as ApiResponse
-    return data.data[0].id
+    return data.data.id
   } catch (error) {
     console.error(error)
     return ''

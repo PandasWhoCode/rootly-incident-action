@@ -6,5 +6,5 @@
 export interface ApiResponse {
   data: {
     id: string
-  }[]
+  }
 }
