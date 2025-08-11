@@ -37,7 +37,7 @@ describe('incident.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'incident-123' }]
+        data: { id: 'incident-123' }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
@@ -93,7 +93,7 @@ describe('incident.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'incident-456' }]
+        data: { id: 'incident-456' }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
@@ -144,7 +144,7 @@ describe('incident.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'incident-789' }]
+        data: { id: 'incident-789' }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
@@ -234,7 +234,7 @@ describe('incident.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'incident-empty' }]
+        data: { id: 'incident-empty' }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)

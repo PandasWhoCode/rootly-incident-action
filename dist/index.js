@@ -27287,7 +27287,7 @@ async function createAlert(apiKey, summary, details, serviceIds, groupIds, envir
     try {
         const response = await fetch(url, options);
         const data = (await response.json());
-        return data.data[0].id;
+        return data.data.id;
     }
     catch (error) {
         console.error(error);
@@ -27341,7 +27341,7 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
     try {
         const response = await fetch(url, options);
         const data = (await response.json());
-        return data.data[0].id;
+        return data.data.id;
     }
     catch (error) {
         console.error(error);
@@ -27367,7 +27367,7 @@ async function getServiceId(service, apiKey) {
     try {
         const response = await fetch(url, options);
         const data = (await response.json());
-        return data.data[0].id;
+        return data.data.id;
     }
     catch (error) {
         console.error(error);
@@ -27393,7 +27393,7 @@ async function getGroupId(group, apiKey) {
     try {
         const response = await fetch(url, options);
         const data = (await response.json());
-        return data.data[0].id;
+        return data.data.id;
     }
     catch (error) {
         console.error(error);
@@ -27420,7 +27420,7 @@ async function getEnvironmentId(environment, apiKey) {
     try {
         const response = await fetch(url, options);
         const data = (await response.json());
-        return data.data[0].id;
+        return data.data.id;
     }
     catch (error) {
         console.error(error);
@@ -27446,7 +27446,7 @@ async function getSeverityId(severity, apiKey) {
     try {
         const response = await fetch(url, options);
         const data = (await response.json());
-        return data.data[0].id;
+        return data.data.id;
     }
     catch (error) {
         console.error(error);
@@ -27473,7 +27473,7 @@ async function getIncidentTypeId(incidentType, apiKey) {
     try {
         const response = await fetch(url, options);
         const data = (await response.json());
-        return data.data[0].id;
+        return data.data.id;
     }
     catch (error) {
         console.error(error);

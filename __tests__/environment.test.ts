@@ -27,7 +27,7 @@ describe('environment.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: mockEnvironmentId }]
+        data: { id: mockEnvironmentId }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
@@ -49,7 +49,7 @@ describe('environment.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'env-456' }]
+        data: { id: 'env-456' }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
@@ -103,7 +103,7 @@ describe('environment.ts', () => {
       const mockResponse = {
         ok: true,
         json: jest.fn().mockResolvedValue({
-          data: [{ id: `env-${env}` }]
+          data: { id: `env-${env}` }
         })
       } as unknown as Response
       mockFetch.mockResolvedValue(mockResponse)

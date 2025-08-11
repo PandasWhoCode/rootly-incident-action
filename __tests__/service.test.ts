@@ -27,7 +27,7 @@ describe('service.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: mockServiceId }]
+        data: { id: mockServiceId }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
@@ -49,7 +49,7 @@ describe('service.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'service-456' }]
+        data: { id: 'service-456' }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
@@ -100,7 +100,7 @@ describe('service.ts', () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'service-empty' }]
+        data: { id: 'service-empty' }
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
