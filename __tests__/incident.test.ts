@@ -65,6 +65,7 @@ describe('incident.ts', () => {
         },
         body: JSON.stringify({
           data: {
+            type: 'incidents',
             attributes: {
               private: false,
               title: mockTitle,
@@ -75,8 +76,7 @@ describe('incident.ts', () => {
               service_ids: mockServiceIds,
               group_ids: mockGroupIds,
               alert_ids: [mockAlertId]
-            },
-            type: 'incidents'
+            }
           }
         })
       }
@@ -116,17 +116,13 @@ describe('incident.ts', () => {
         },
         body: JSON.stringify({
           data: {
+            type: 'incidents',
             attributes: {
               private: false,
               title: mockTitle,
               summary: mockSummary,
-              severity_id: mockSeverityId,
-              environment_ids: [],
-              incident_type_ids: [],
-              service_ids: [],
-              group_ids: []
-            },
-            type: 'incidents'
+              severity_id: mockSeverityId
+            }
           }
         })
       }
@@ -163,17 +159,14 @@ describe('incident.ts', () => {
       expect.objectContaining({
         body: JSON.stringify({
           data: {
+            type: 'incidents',
             attributes: {
               private: false,
               title: mockTitle,
               summary: mockSummary,
               severity_id: mockSeverityId,
-              environment_ids: [],
-              incident_type_ids: [],
-              service_ids: mockServiceIds,
-              group_ids: []
-            },
-            type: 'incidents'
+              service_ids: mockServiceIds
+            }
           }
         })
       })
@@ -247,18 +240,14 @@ describe('incident.ts', () => {
       expect.objectContaining({
         body: JSON.stringify({
           data: {
+            type: 'incidents',
             attributes: {
               private: false,
               title: mockTitle,
               summary: mockSummary,
               severity_id: mockSeverityId,
-              environment_ids: [],
-              incident_type_ids: [],
-              service_ids: [],
-              group_ids: [],
               alert_ids: [mockAlertId]
-            },
-            type: 'incidents'
+            }
           }
         })
       })

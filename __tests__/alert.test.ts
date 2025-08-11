@@ -96,10 +96,7 @@ describe('alert.ts', () => {
             summary: mockSummary,
             noise: 'noise',
             status: 'triggered',
-            description: mockDetails,
-            service_ids: [],
-            group_ids: [],
-            environment_ids: []
+            description: mockDetails
           }
         }
       })
@@ -173,10 +170,7 @@ describe('alert.ts', () => {
               summary: mockSummary,
               noise: 'noise',
               status: 'triggered',
-              description: mockDetails,
-              service_ids: [],
-              group_ids: [],
-              environment_ids: []
+              description: mockDetails
             }
           }
         })

@@ -27259,21 +27259,35 @@ var coreExports = requireCore();
  *
  */
 async function createAlert(apiKey, summary, details, serviceIds, groupIds, environmentIds) {
+    // Log the input parameters for debugging
+    console.log('Creating alert with the following parameters:');
+    console.log(summary);
+    console.log(details);
+    console.log(serviceIds);
+    console.log(groupIds);
+    console.log(environmentIds);
     // Quick helper for nullish coalescing
     const safeArray = (arr) => arr ?? [];
     const url = 'https://api.rootly.com/v1/alerts';
+    const attributes = {
+        summary: summary,
+        noise: 'noise',
+        status: 'triggered',
+        description: details
+    };
+    if (serviceIds !== undefined && serviceIds.length > 0) {
+        attributes.service_ids = safeArray(serviceIds);
+    }
+    if (groupIds !== undefined && groupIds.length > 0) {
+        attributes.group_ids = safeArray(groupIds);
+    }
+    if (environmentIds !== undefined && environmentIds.length > 0) {
+        attributes.environment_ids = safeArray(environmentIds);
+    }
     const alertBody = JSON.stringify({
         data: {
             type: 'alerts',
-            attributes: {
-                summary: summary,
-                noise: 'noise',
-                status: 'triggered',
-                description: details,
-                service_ids: safeArray(serviceIds),
-                group_ids: safeArray(groupIds),
-                environment_ids: safeArray(environmentIds)
-            }
+            attributes
         }
     });
     const options = {
@@ -27321,19 +27335,27 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
         private: false,
         title: title,
         summary: summary,
-        severity_id: severityId,
-        environment_ids: safeArray(environmentIds),
-        incident_type_ids: safeArray(incidentTypeIds),
-        service_ids: safeArray(serviceIds),
-        group_ids: safeArray(groupIds)
+        severity_id: severityId
     };
+    if (environmentIds && environmentIds.length > 0) {
+        attributes.environment_ids = safeArray(environmentIds);
+    }
+    if (incidentTypeIds && incidentTypeIds.length > 0) {
+        attributes.incident_type_ids = safeArray(incidentTypeIds);
+    }
+    if (serviceIds && serviceIds.length > 0) {
+        attributes.service_ids = safeArray(serviceIds);
+    }
+    if (groupIds && groupIds.length > 0) {
+        attributes.group_ids = safeArray(groupIds);
+    }
     if (alertId && alertId.trim() !== '') {
         attributes.alert_ids = [alertId];
     }
     const incidentBody = JSON.stringify({
         data: {
-            attributes,
-            type: 'incidents'
+            type: 'incidents',
+            attributes
         }
     });
     const options = {

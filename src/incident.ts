@@ -36,11 +36,23 @@ export async function createIncident(
     private: false,
     title: title,
     summary: summary,
-    severity_id: severityId,
-    environment_ids: safeArray(environmentIds),
-    incident_type_ids: safeArray(incidentTypeIds),
-    service_ids: safeArray(serviceIds),
-    group_ids: safeArray(groupIds)
+    severity_id: severityId
+  }
+
+  if (environmentIds && environmentIds.length > 0) {
+    attributes.environment_ids = safeArray(environmentIds)
+  }
+
+  if (incidentTypeIds && incidentTypeIds.length > 0) {
+    attributes.incident_type_ids = safeArray(incidentTypeIds)
+  }
+
+  if (serviceIds && serviceIds.length > 0) {
+    attributes.service_ids = safeArray(serviceIds)
+  }
+
+  if (groupIds && groupIds.length > 0) {
+    attributes.group_ids = safeArray(groupIds)
   }
 
   if (alertId && alertId.trim() !== '') {
@@ -49,8 +61,8 @@ export async function createIncident(
 
   const incidentBody = JSON.stringify({
     data: {
-      attributes,
-      type: 'incidents'
+      type: 'incidents',
+      attributes
     }
   })
   const options = {
