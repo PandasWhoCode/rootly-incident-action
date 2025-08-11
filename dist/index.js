@@ -27259,13 +27259,6 @@ var coreExports = requireCore();
  *
  */
 async function createAlert(apiKey, summary, details, serviceIds, groupIds, environmentIds) {
-    // Log the input parameters for debugging
-    console.log('Creating alert with the following parameters:');
-    console.log(summary);
-    console.log(details);
-    console.log(serviceIds);
-    console.log(groupIds);
-    console.log(environmentIds);
     // Quick helper for nullish coalescing
     const safeArray = (arr) => arr ?? [];
     const url = 'https://api.rootly.com/v1/alerts';
@@ -27290,6 +27283,8 @@ async function createAlert(apiKey, summary, details, serviceIds, groupIds, envir
             attributes
         }
     });
+    // log the alert body for debugging
+    console.log('Alert Body:', alertBody);
     const options = {
         method: 'POST',
         headers: {
@@ -27358,6 +27353,8 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
             attributes
         }
     });
+    // log the incident body for debugging
+    coreExports.debug(`Incident Body: ${incidentBody}`);
     const options = {
         method: 'POST',
         headers: {

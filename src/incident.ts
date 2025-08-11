@@ -65,6 +65,10 @@ export async function createIncident(
       attributes
     }
   })
+
+  // log the incident body for debugging
+  core.debug(`Incident Body: ${incidentBody}`)
+
   const options = {
     method: 'POST',
     headers: {

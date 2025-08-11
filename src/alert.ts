@@ -20,19 +20,12 @@ export async function createAlert(
   groupIds?: string[],
   environmentIds?: string[]
 ): Promise<string> {
-  // Log the input parameters for debugging
-  console.log('Creating alert with the following parameters:')
-  console.log(summary)
-  console.log(details)
-  console.log(serviceIds)
-  console.log(groupIds)
-  console.log(environmentIds)
-
   // Quick helper for nullish coalescing
   const safeArray = <T>(arr?: T[]) => arr ?? []
 
   const url = 'https://api.rootly.com/v1/alerts'
   const attributes: Record<string, string | string[] | boolean> = {
+    //TODO: Add `source` for alerts.
     summary: summary,
     noise: 'noise',
     status: 'triggered',
@@ -57,6 +50,10 @@ export async function createAlert(
       attributes
     }
   })
+
+  // log the alert body for debugging
+  console.log('Alert Body:', alertBody)
+
   const options = {
     method: 'POST',
     headers: {
