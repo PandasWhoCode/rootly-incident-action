@@ -24,7 +24,7 @@ inputs:
       The comma-separated names of the environments to create the incident for.
     required: true
     default: 'production'
-  incident-types:
+  incident_types:
     description:
       The comma-separated names of the incident types to create the incident
       for.
@@ -41,11 +41,11 @@ inputs:
     description: The severity of the incident.
     required: true
     default: 'Sev0'
-  create-alert:
+  create_alert:
     description: Whether to create an alert for the incident.
     required: false
     default: 'true'
-  api-token:
+  api_key:
     description: The API token to use for authentication with Rootly.
     required: true
 

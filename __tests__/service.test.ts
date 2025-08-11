@@ -57,7 +57,7 @@ describe('service.ts', () => {
     await getServiceId('My Test Service', mockApiKey)
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/services?filter%5Bname%5D=My%20Test Service',
+      'https://api.rootly.com/v1/services?filter%5Bname%5D=My%20Test%20Service',
       expect.objectContaining({
         method: 'GET'
       })

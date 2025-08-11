@@ -1,3 +1,4 @@
+import * as core from '@actions/core'
 import { ApiResponse } from './apiResponse.js'
 
 /**
@@ -30,26 +31,32 @@ export async function createIncident(
   const safeArray = <T>(arr?: T[]) => arr ?? []
 
   const url = 'https://api.rootly.com/v1/incidents'
+
+  const attributes: Record<string, string | string[] | boolean> = {
+    private: false,
+    title: title,
+    summary: summary,
+    severity_id: severityId,
+    environment_ids: safeArray(environmentIds),
+    incident_type_ids: safeArray(incidentTypeIds),
+    service_ids: safeArray(serviceIds),
+    group_ids: safeArray(groupIds)
+  }
+
+  if (alertId && alertId.trim() !== '') {
+    attributes.alert_ids = [alertId]
+  }
+
   const incidentBody = JSON.stringify({
     data: {
-      attributes: {
-        private: false,
-        title: title,
-        summary: summary,
-        severity_id: severityId,
-        alert_ids: [alertId ?? ''],
-        environment_ids: safeArray(environmentIds),
-        incident_type_ids: safeArray(incidentTypeIds),
-        service_ids: safeArray(serviceIds),
-        group_ids: safeArray(groupIds)
-      },
+      attributes,
       type: 'incidents'
     }
   })
   const options = {
     method: 'POST',
     headers: {
-      Authorization: 'Bearer ' + apiKey,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/vnd.api+json'
     },
     body: incidentBody
@@ -57,10 +64,16 @@ export async function createIncident(
 
   try {
     const response = await fetch(url, options)
+    if (!response.ok) {
+      throw new Error(
+        `HTTP error! status: ${response.status} ${response.statusText}`
+      )
+    }
     const data = (await response.json()) as ApiResponse
     return data.data[0].id
   } catch (error) {
-    console.error(error)
-    return ''
+    const errorMessage = `Failed to create incident: ${error instanceof Error ? error.message : String(error)}`
+    core.error(errorMessage)
+    throw error
   }
 }

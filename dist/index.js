@@ -27279,13 +27279,16 @@ async function createAlert(apiKey, summary, details, serviceIds, groupIds, envir
     const options = {
         method: 'POST',
         headers: {
-            Authorization: 'Bearer' + apiKey,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/vnd.api+json'
         },
         body: alertBody
     };
     try {
         const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
         const data = (await response.json());
         return data.data[0].id;
     }
@@ -27314,38 +27317,45 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
     // Quick helper for nullish coalescing
     const safeArray = (arr) => arr ?? [];
     const url = 'https://api.rootly.com/v1/incidents';
+    const attributes = {
+        private: false,
+        title: title,
+        summary: summary,
+        severity_id: severityId,
+        environment_ids: safeArray(environmentIds),
+        incident_type_ids: safeArray(incidentTypeIds),
+        service_ids: safeArray(serviceIds),
+        group_ids: safeArray(groupIds)
+    };
+    if (alertId && alertId.trim() !== '') {
+        attributes.alert_ids = [alertId];
+    }
     const incidentBody = JSON.stringify({
         data: {
-            attributes: {
-                private: false,
-                title: title,
-                summary: summary,
-                severity_id: severityId,
-                alert_ids: [alertId ?? ''],
-                environment_ids: safeArray(environmentIds),
-                incident_type_ids: safeArray(incidentTypeIds),
-                service_ids: safeArray(serviceIds),
-                group_ids: safeArray(groupIds)
-            },
+            attributes,
             type: 'incidents'
         }
     });
     const options = {
         method: 'POST',
         headers: {
-            Authorization: 'Bearer ' + apiKey,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/vnd.api+json'
         },
         body: incidentBody
     };
     try {
         const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
         const data = (await response.json());
         return data.data[0].id;
     }
     catch (error) {
-        console.error(error);
-        return '';
+        const errorMessage = `Failed to create incident: ${error instanceof Error ? error.message : String(error)}`;
+        coreExports.error(errorMessage);
+        throw error;
     }
 }
 
@@ -27357,16 +27367,22 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
  * @returns {string} The ID of the service.
  */
 async function getServiceId(service, apiKey) {
-    const apiServiceName = service.replace(' ', '%20');
+    const apiServiceName = encodeURIComponent(service);
     const url = 'https://api.rootly.com/v1/services?filter%5Bname%5D=' + apiServiceName;
     const options = {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + apiKey },
-        body: undefined
+        headers: { Authorization: `Bearer ${apiKey}` }
     };
     try {
         const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
         const data = (await response.json());
+        if (!data.data || data.data.length === 0) {
+            coreExports.warning(`Service '${service}' not found`);
+            return '';
+        }
         return data.data[0].id;
     }
     catch (error) {
@@ -27383,15 +27399,17 @@ async function getServiceId(service, apiKey) {
  * @returns {string} The ID of the group.
  */
 async function getGroupId(group, apiKey) {
-    const apiGroupName = group.replace(' ', '%20');
+    const apiGroupName = encodeURIComponent(group);
     const url = 'https://api.rootly.com/v1/teams?filter%5Bname%5D=' + apiGroupName;
     const options = {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + apiKey },
-        body: undefined
+        headers: { Authorization: `Bearer ${apiKey}` }
     };
     try {
         const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
         const data = (await response.json());
         return data.data[0].id;
     }
@@ -27409,16 +27427,18 @@ async function getGroupId(group, apiKey) {
  * @returns {string} The ID of the environment.
  */
 async function getEnvironmentId(environment, apiKey) {
-    const apiEnvironmentName = environment.replace(' ', '%20');
+    const apiEnvironmentName = encodeURIComponent(environment);
     const url = 'https://api.rootly.com/v1/environments?filter%5Bname%5D=' +
         apiEnvironmentName;
     const options = {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + apiKey },
-        body: undefined
+        headers: { Authorization: `Bearer ${apiKey}` }
     };
     try {
         const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
         const data = (await response.json());
         return data.data[0].id;
     }
@@ -27436,15 +27456,17 @@ async function getEnvironmentId(environment, apiKey) {
  * @returns {string} The ID of the severity.
  */
 async function getSeverityId(severity, apiKey) {
-    const apiSeverityName = severity.replace(' ', '%20');
+    const apiSeverityName = encodeURIComponent(severity);
     const url = 'https://api.rootly.com/v1/severities?filter%5Bname%5D=' + apiSeverityName;
     const options = {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + apiKey },
-        body: undefined
+        headers: { Authorization: `Bearer ${apiKey}` }
     };
     try {
         const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
         const data = (await response.json());
         return data.data[0].id;
     }
@@ -27462,16 +27484,18 @@ async function getSeverityId(severity, apiKey) {
  * @returns {string} The ID of the incident type.
  */
 async function getIncidentTypeId(incidentType, apiKey) {
-    const apiIncidentTypeName = incidentType.replace(' ', '%20');
+    const apiIncidentTypeName = encodeURIComponent(incidentType);
     const url = 'https://api.rootly.com/v1/incident_types?filter%5Bname%5D=' +
         apiIncidentTypeName;
     const options = {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + apiKey },
-        body: undefined
+        headers: { Authorization: `Bearer ${apiKey}` }
     };
     try {
         const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
         const data = (await response.json());
         return data.data[0].id;
     }
@@ -27494,11 +27518,11 @@ async function run() {
         const services = coreExports.getInput('services').split(',');
         const groups = coreExports.getInput('groups').split(',');
         const environments = coreExports.getInput('environments').split(',');
-        const incidentTypes = coreExports.getInput('incident-types').split(',');
-        const createAlertFlag = coreExports.getInput('create-alert') == 'true';
+        const incidentTypes = coreExports.getInput('incident_types').split(',');
+        const createAlertFlag = coreExports.getInput('create_alert') == 'true';
         // The API key is secret and shall not be logged in any way.
         // The API key shall be used during requests but never logged or stored.
-        const apiKey = coreExports.getInput('api-token');
+        const apiKey = coreExports.getInput('api_key');
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
         coreExports.debug(`Title: ${title}`);
         coreExports.debug(`Details: ${details}`);
@@ -27506,7 +27530,9 @@ async function run() {
         coreExports.debug(`Service: ${services}`);
         coreExports.debug(`Group: ${groups}`);
         coreExports.debug(`Environment: ${environments}`);
+        coreExports.debug(`IncidentType: ${incidentTypes}`);
         coreExports.debug(`Create Alert: ${createAlertFlag}`);
+        coreExports.debug(`Api Key Length: ${apiKey.length}`); // Do not log the actual API key
         // Set up service IDs
         const serviceIds = [];
         for (const service of services) {

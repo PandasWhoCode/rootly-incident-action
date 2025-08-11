@@ -41,7 +41,7 @@ export async function createAlert(
   const options = {
     method: 'POST',
     headers: {
-      Authorization: 'Bearer' + apiKey,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/vnd.api+json'
     },
     body: alertBody
@@ -49,6 +49,13 @@ export async function createAlert(
 
   try {
     const response = await fetch(url, options)
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP error! status: ${response.status} ${response.statusText}`
+      )
+    }
+
     const data = (await response.json()) as ApiResponse
     return data.data[0].id
   } catch (error) {
