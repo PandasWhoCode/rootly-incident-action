@@ -47,7 +47,7 @@ describe('alert.ts', () => {
     expect(mockFetch).toHaveBeenCalledWith('https://api.rootly.com/v1/alerts', {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer' + mockApiKey,
+        Authorization: 'Bearer ' + mockApiKey,
         'Content-Type': 'application/vnd.api+json'
       },
       body: JSON.stringify({
@@ -86,7 +86,7 @@ describe('alert.ts', () => {
     expect(mockFetch).toHaveBeenCalledWith('https://api.rootly.com/v1/alerts', {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer' + mockApiKey,
+        Authorization: 'Bearer ' + mockApiKey,
         'Content-Type': 'application/vnd.api+json'
       },
       body: JSON.stringify({

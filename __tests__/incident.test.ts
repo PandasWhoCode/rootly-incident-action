@@ -2,6 +2,7 @@
  * Unit tests for the incident functionality, src/incident.ts
  */
 import { jest } from '@jest/globals'
+import { ApiResponse } from '../src/apiResponse.js'
 
 // Mock the global fetch function
 const mockFetch = jest.fn<typeof globalThis.fetch>()
@@ -69,11 +70,11 @@ describe('incident.ts', () => {
               title: mockTitle,
               summary: mockSummary,
               severity_id: mockSeverityId,
-              alert_ids: [mockAlertId],
               environment_ids: mockEnvironmentIds,
               incident_type_ids: mockIncidentTypeIds,
               service_ids: mockServiceIds,
-              group_ids: mockGroupIds
+              group_ids: mockGroupIds,
+              alert_ids: [mockAlertId]
             },
             type: 'incidents'
           }
@@ -120,7 +121,6 @@ describe('incident.ts', () => {
               title: mockTitle,
               summary: mockSummary,
               severity_id: mockSeverityId,
-              alert_ids: [''],
               environment_ids: [],
               incident_type_ids: [],
               service_ids: [],
@@ -168,7 +168,6 @@ describe('incident.ts', () => {
               title: mockTitle,
               summary: mockSummary,
               severity_id: mockSeverityId,
-              alert_ids: [''],
               environment_ids: [],
               incident_type_ids: [],
               service_ids: mockServiceIds,
@@ -184,44 +183,36 @@ describe('incident.ts', () => {
     consoleSpy.mockRestore()
   })
 
-  it('Returns empty string when API request fails', async () => {
+  it('Throws error when API request fails', async () => {
     mockFetch.mockRejectedValue(new Error('Network error'))
     const consoleSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
 
-    const result = await createIncident(
-      mockApiKey,
-      mockTitle,
-      mockSummary,
-      mockSeverityId
-    )
-
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(new Error('Network error'))
+    await expect(
+      createIncident(mockApiKey, mockTitle, mockSummary, mockSeverityId)
+    ).rejects.toThrow('Network error')
 
     consoleSpy.mockRestore()
   })
 
-  it('Returns empty string when response parsing fails', async () => {
+  it('Throws error when response parsing fails', async () => {
     const mockResponse = {
       ok: true,
-      json: jest.fn().mockRejectedValue(new Error('JSON parse error'))
+      json: jest
+        .fn()
+        .mockRejectedValue(
+          new Error('JSON parse error')
+        ) as jest.MockedFunction<() => Promise<ApiResponse>>
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
     const consoleSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
 
-    const result = await createIncident(
-      mockApiKey,
-      mockTitle,
-      mockSummary,
-      mockSeverityId
-    )
-
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(new Error('JSON parse error'))
+    await expect(
+      createIncident(mockApiKey, mockTitle, mockSummary, mockSeverityId)
+    ).rejects.toThrow('JSON parse error')
 
     consoleSpy.mockRestore()
   })
@@ -261,11 +252,11 @@ describe('incident.ts', () => {
               title: mockTitle,
               summary: mockSummary,
               severity_id: mockSeverityId,
-              alert_ids: [mockAlertId],
               environment_ids: [],
               incident_type_ids: [],
               service_ids: [],
-              group_ids: []
+              group_ids: [],
+              alert_ids: [mockAlertId]
             },
             type: 'incidents'
           }

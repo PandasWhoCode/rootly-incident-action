@@ -64,13 +64,13 @@ jobs:
           services: 'my-rootly-service'
           groups: 'my-rootly-group'
           environments: 'production'
-          incident-types: 'my-incident-type'
+          incident_types: 'my-incident-type'
           title: 'My Test Incident'
           summary:
             'This is a test incident created by the GitHub Actions workflow.'
           severity: 'low'
-          create-alert: 'true'
-          api-token: ${{ secrets.TEST_ROOTLY_API_KEY }}
+          create_alert: 'true'
+          api_key: ${{ secrets.TEST_ROOTLY_API_KEY }}
         env:
           ACTIONS_STEP_DEBUG: true
 
