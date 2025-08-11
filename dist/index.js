@@ -27367,7 +27367,7 @@ async function getServiceId(service, apiKey) {
     try {
         const response = await fetch(url, options);
         const data = (await response.json());
-        return data.data.id;
+        return data?.data?.id || 'FAILED';
     }
     catch (error) {
         console.error(error);
