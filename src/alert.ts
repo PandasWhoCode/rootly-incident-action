@@ -25,8 +25,8 @@ export async function createAlert(
 
   const url = 'https://api.rootly.com/v1/alerts'
   const attributes: Record<string, string | string[] | boolean> = {
-    //TODO: Add `source` for alerts.
     summary: summary,
+    source: 'api',
     noise: 'noise',
     status: 'triggered',
     description: details

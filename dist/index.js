@@ -27264,6 +27264,7 @@ async function createAlert(apiKey, summary, details, serviceIds, groupIds, envir
     const url = 'https://api.rootly.com/v1/alerts';
     const attributes = {
         summary: summary,
+        source: 'api',
         noise: 'noise',
         status: 'triggered',
         description: details

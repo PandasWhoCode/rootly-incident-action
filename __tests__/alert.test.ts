@@ -55,6 +55,7 @@ describe('alert.ts', () => {
           type: 'alerts',
           attributes: {
             summary: mockSummary,
+            source: 'api',
             noise: 'noise',
             status: 'triggered',
             description: mockDetails,
@@ -94,6 +95,7 @@ describe('alert.ts', () => {
           type: 'alerts',
           attributes: {
             summary: mockSummary,
+            source: 'api',
             noise: 'noise',
             status: 'triggered',
             description: mockDetails
@@ -168,6 +170,7 @@ describe('alert.ts', () => {
             type: 'alerts',
             attributes: {
               summary: mockSummary,
+              source: 'api',
               noise: 'noise',
               status: 'triggered',
               description: mockDetails
