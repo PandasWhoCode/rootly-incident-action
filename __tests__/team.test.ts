@@ -104,19 +104,36 @@ describe('team.ts', () => {
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
+
+    const result = await getTeamId('', mockApiKey)
+
+    expect(result).toBe('team-empty')
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.rootly.com/v1/teams?filter%5Bname%5D=',
+      {
+        method: 'GET',
+        headers: { Authorization: 'Bearer test-api-key' }
+      }
+    )
+  })
+
+  it('Returns empty string when API returns HTTP error status', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 429,
+      statusText: 'Too Many Requests'
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
     const consoleSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
 
-    const result = await getTeamId('', mockApiKey)
+    const result = await getTeamId(mockApiKey, 'backend-team')
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/teams?filter%5Bname%5D=',
-      expect.objectContaining({
-        method: 'GET'
-      })
+    expect(result).toBe('')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      new Error('HTTP error! status: 429 Too Many Requests')
     )
-    expect(result).toBe('team-empty')
 
     consoleSpy.mockRestore()
   })

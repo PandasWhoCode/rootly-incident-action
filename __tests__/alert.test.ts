@@ -177,4 +177,25 @@ describe('alert.ts', () => {
 
     consoleSpy.mockRestore()
   })
+
+  it('Returns empty string when API returns HTTP error status', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request'
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
+
+    const result = await createAlert(mockApiKey, mockSummary)
+
+    expect(result).toBe('')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      new Error('HTTP error! status: 400 Bad Request')
+    )
+
+    consoleSpy.mockRestore()
+  })
 })

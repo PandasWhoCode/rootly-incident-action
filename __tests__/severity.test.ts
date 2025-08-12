@@ -119,4 +119,39 @@ describe('severity.ts', () => {
       )
     }
   })
+
+  it('Handles critical severity level', async () => {
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: [{ id: 'severity-critical' }]
+      })
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+
+    const result = await getSeverityId(mockApiKey, 'critical')
+
+    expect(result).toBe('severity-critical')
+  })
+
+  it('Returns empty string when API returns HTTP error status', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
+
+    const result = await getSeverityId(mockApiKey, 'unknown')
+
+    expect(result).toBe('')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      new Error('HTTP error! status: 404 Not Found')
+    )
+
+    consoleSpy.mockRestore()
+  })
 })

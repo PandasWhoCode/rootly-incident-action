@@ -119,4 +119,39 @@ describe('incidentType.ts', () => {
       )
     }
   })
+
+  it('Handles security incident type', async () => {
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: [{ id: 'type-security' }]
+      })
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+
+    const result = await getIncidentTypeId(mockApiKey, 'security')
+
+    expect(result).toBe('type-security')
+  })
+
+  it('Returns empty string when API returns HTTP error status', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error'
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
+
+    const result = await getIncidentTypeId(mockApiKey, 'outage')
+
+    expect(result).toBe('')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      new Error('HTTP error! status: 500 Internal Server Error')
+    )
+
+    consoleSpy.mockRestore()
+  })
 })

@@ -119,4 +119,39 @@ describe('environment.ts', () => {
       )
     }
   })
+
+  it('Handles production environment type', async () => {
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: [{ id: 'env-production' }]
+      })
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+
+    const result = await getEnvironmentId(mockApiKey, 'production')
+
+    expect(result).toBe('env-production')
+  })
+
+  it('Returns empty string when API returns HTTP error status', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized'
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
+
+    const result = await getEnvironmentId(mockApiKey, 'staging')
+
+    expect(result).toBe('')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      new Error('HTTP error! status: 401 Unauthorized')
+    )
+
+    consoleSpy.mockRestore()
+  })
 })
