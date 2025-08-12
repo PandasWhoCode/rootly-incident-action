@@ -1,5 +1,5 @@
 /**
- * Unit tests for the group functionality, src/group.ts
+ * Unit tests for the team functionality, src/team.ts
  */
 import { jest } from '@jest/globals'
 
@@ -8,12 +8,12 @@ const mockFetch = jest.fn<typeof globalThis.fetch>()
 global.fetch = mockFetch
 
 // Import the module being tested dynamically
-const { getGroupId } = await import('../src/group.js')
+const { getTeamId } = await import('../src/team.js')
 
-describe('group.ts', () => {
+describe('team.ts', () => {
   const mockApiKey = 'test-api-key'
-  const mockGroupName = 'Test Group'
-  const mockGroupId = 'group-123'
+  const mockTeamName = 'Test Team'
+  const mockTeamId = 'team-123'
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -23,41 +23,41 @@ describe('group.ts', () => {
     jest.resetAllMocks()
   })
 
-  it('Gets group ID successfully', async () => {
+  it('Gets team ID successfully', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: mockGroupId }]
+        data: [{ id: mockTeamId }]
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
 
-    const result = await getGroupId(mockGroupName, mockApiKey)
+    const result = await getTeamId(mockTeamName, mockApiKey)
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/alert_groups?include=Test%20Group',
+      'https://api.rootly.com/v1/teams?filter%5Bname%5D=Test%20Team',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer ' + mockApiKey },
         body: undefined
       }
     )
-    expect(result).toBe(mockGroupId)
+    expect(result).toBe(mockTeamId)
   })
 
-  it('Handles group names with spaces correctly', async () => {
+  it('Handles team names with spaces correctly', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'group-456' }]
+        data: [{ id: 'team-456' }]
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
 
-    await getGroupId('Engineering Team', mockApiKey)
+    await getTeamId('Engineering Team', mockApiKey)
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/alert_groups?include=Engineering%20Team',
+      'https://api.rootly.com/v1/teams?filter%5Bname%5D=Engineering%20Team',
       expect.objectContaining({
         method: 'GET'
       })
@@ -70,7 +70,7 @@ describe('group.ts', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
 
-    const result = await getGroupId(mockGroupName, mockApiKey)
+    const result = await getTeamId(mockTeamName, mockApiKey)
 
     expect(result).toBe('')
     expect(consoleSpy).toHaveBeenCalledWith(new Error('Network error'))
@@ -88,7 +88,7 @@ describe('group.ts', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
 
-    const result = await getGroupId(mockGroupName, mockApiKey)
+    const result = await getTeamId(mockTeamName, mockApiKey)
 
     expect(result).toBe('')
     expect(consoleSpy).toHaveBeenCalledWith(new Error('JSON parse error'))
@@ -96,11 +96,11 @@ describe('group.ts', () => {
     consoleSpy.mockRestore()
   })
 
-  it('Handles empty group name', async () => {
+  it('Handles empty team name', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'group-empty' }]
+        data: [{ id: 'team-empty' }]
       })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
@@ -108,15 +108,15 @@ describe('group.ts', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
 
-    const result = await getGroupId('', mockApiKey)
+    const result = await getTeamId('', mockApiKey)
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/alert_groups?include=',
+      'https://api.rootly.com/v1/teams?filter%5Bname%5D=',
       expect.objectContaining({
         method: 'GET'
       })
     )
-    expect(result).toBe('group-empty')
+    expect(result).toBe('team-empty')
 
     consoleSpy.mockRestore()
   })

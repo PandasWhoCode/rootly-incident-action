@@ -14,11 +14,15 @@ inputs:
       The comma-separated names of the services to create the incident for.
     required: true
     default: 'my-rootly-service'
-  groups:
+  teams:
     description:
-      The comma-separated names of the groups to create the incident for.
+      The comma-separated names of the teams to create the incident for.
     required: true
     default: 'my-rootly-group'
+  alert_groups:
+    description:
+      The comma-separated names of the alert groups to create the alert for.
+    required: false
   environments:
     description:
       The comma-separated names of the environments to create the incident for.

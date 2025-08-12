@@ -3,6 +3,7 @@ import { createAlert } from './alert.js'
 import { createIncident } from './incident.js'
 import { getServiceId } from './service.js'
 import { getGroupId } from './group.js'
+import { getTeamId } from './team.js'
 import { getEnvironmentId } from './environment.js'
 import { getSeverityId } from './severity.js'
 import { getIncidentTypeId } from './incidentType.js'
@@ -18,7 +19,8 @@ export async function run(): Promise<void> {
     const title: string = core.getInput('title')
     const details: string = core.getInput('summary')
     const services: string[] = core.getInput('services').split(',')
-    const groups: string[] = core.getInput('groups').split(',')
+    const teams: string[] = core.getInput('teams').split(',')
+    const groups: string[] = core.getInput('alert_groups').split(',')
     const environments: string[] = core.getInput('environments').split(',')
     const incidentTypes: string[] = core.getInput('incident_types').split(',')
     const createAlertFlag: boolean = core.getInput('create_alert') == 'true'
@@ -32,7 +34,8 @@ export async function run(): Promise<void> {
     core.debug(`Details: ${details}`)
     core.debug(`Severity: ${severity}`)
     core.debug(`Service: ${services}`)
-    core.debug(`Group: ${groups}`)
+    core.debug(`Team: ${teams}`)
+    core.debug(`Alert Group: ${groups}`)
     core.debug(`Environment: ${environments}`)
     core.debug(`IncidentType: ${incidentTypes}`)
     core.debug(`Create Alert: ${createAlertFlag}`)
@@ -45,11 +48,18 @@ export async function run(): Promise<void> {
       serviceIds.push(serviceId)
     }
 
-    // Set up group IDs
+    // Set up group IDs (used for alert groups)
     const groupIds: string[] = []
     for (const group of groups) {
       const groupId = await getGroupId(group, apiKey)
       groupIds.push(groupId)
+    }
+
+    // Set up team IDs (teams are the incident groups)
+    const teamIds: string[] = []
+    for (const team of teams) {
+      const teamId = await getTeamId(team, apiKey)
+      teamIds.push(teamId)
     }
 
     // Set up environment IDs
@@ -74,11 +84,11 @@ export async function run(): Promise<void> {
     if (createAlertFlag) {
       alertId = await createAlert(
         apiKey,
-        title,
-        details,
-        serviceIds,
-        groupIds,
-        environmentIds
+        title, // Using title as summary for the alert
+        details, // Using details as description for the alert
+        serviceIds, // Service IDs
+        groupIds, // Alert Group IDs
+        environmentIds // Environment IDs
       )
     }
 
@@ -90,7 +100,7 @@ export async function run(): Promise<void> {
       severityId,
       alertId,
       serviceIds,
-      groupIds,
+      teamIds,
       environmentIds,
       incidentTypeIds
     )

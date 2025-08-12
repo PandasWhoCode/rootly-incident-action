@@ -13,12 +13,12 @@ import { ApiResponse } from './apiResponse.js'
  *
  */
 export async function createAlert(
-  apiKey: string,
-  summary: string,
-  details: string,
-  serviceIds?: string[],
-  groupIds?: string[],
-  environmentIds?: string[]
+  apiKey: string, // apiKey is required, this is the bearer token for authentication
+  summary: string, // summary is required, this is a brief summary of the alert
+  details: string, // details is required, this is a detailed description of the alert
+  serviceIds?: string[], // serviceIds is optional, this is an array of service IDs associated with the alert
+  groupIds?: string[], // groupIds is optional, this is an array of Alert Group IDs associated with the alert
+  environmentIds?: string[] // environmentIds is optional, this is an array of environment IDs associated with the alert
 ): Promise<string> {
   // Quick helper for nullish coalescing
   const safeArray = <T>(arr?: T[]) => arr ?? []
