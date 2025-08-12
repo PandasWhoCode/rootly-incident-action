@@ -8,3 +8,7 @@ export interface ApiResponse {
     id: string
   }[]
 }
+
+export interface ApiPostResponse {
+  data: { id: string }
+}

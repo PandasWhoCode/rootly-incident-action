@@ -1,4 +1,5 @@
-import { ApiResponse } from './apiResponse.js'
+import { ApiPostResponse } from './apiResponse.js'
+import { addNonEmptyArray } from './arrayOps.js'
 
 /**
  * Create an alert using the Rootly REST API.
@@ -20,9 +21,6 @@ export async function createAlert(
   groupIds?: string[], // groupIds is optional, this is an array of Alert Group IDs associated with the alert
   environmentIds?: string[] // environmentIds is optional, this is an array of environment IDs associated with the alert
 ): Promise<string> {
-  // Quick helper for nullish coalescing
-  const safeArray = <T>(arr?: T[]) => arr ?? []
-
   const url = 'https://api.rootly.com/v1/alerts'
   const attributes: Record<string, string | string[] | boolean> = {
     summary: summary,
@@ -32,17 +30,9 @@ export async function createAlert(
     description: details
   }
 
-  if (serviceIds !== undefined && serviceIds.length > 0) {
-    attributes.service_ids = safeArray(serviceIds)
-  }
-
-  if (groupIds !== undefined && groupIds.length > 0) {
-    attributes.group_ids = safeArray(groupIds)
-  }
-
-  if (environmentIds !== undefined && environmentIds.length > 0) {
-    attributes.environment_ids = safeArray(environmentIds)
-  }
+  addNonEmptyArray(serviceIds, 'service_ids', attributes)
+  addNonEmptyArray(groupIds, 'group_ids', attributes)
+  addNonEmptyArray(environmentIds, 'environment_ids', attributes)
 
   const alertBody = JSON.stringify({
     data: {
@@ -50,9 +40,6 @@ export async function createAlert(
       attributes
     }
   })
-
-  // log the alert body for debugging
-  console.log('Alert Body:', alertBody)
 
   const options = {
     method: 'POST',
@@ -72,8 +59,8 @@ export async function createAlert(
       )
     }
 
-    const data = (await response.json()) as ApiResponse
-    return data.data[0].id
+    const data = (await response.json()) as ApiPostResponse
+    return data.data.id
   } catch (error) {
     console.error(error)
     return ''

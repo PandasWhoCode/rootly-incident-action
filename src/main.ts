@@ -44,36 +44,47 @@ export async function run(): Promise<void> {
     // Set up service IDs
     const serviceIds: string[] = []
     for (const service of services) {
-      const serviceId = await getServiceId(service, apiKey)
-      serviceIds.push(serviceId)
+      if (service !== '') {
+        const serviceId = await getServiceId(service, apiKey)
+        serviceIds.push(serviceId)
+      }
     }
 
     // Set up group IDs (used for alert groups)
+    // check if groups are provided, if not, use an empty array
     const groupIds: string[] = []
     for (const group of groups) {
-      const groupId = await getGroupId(group, apiKey)
-      groupIds.push(groupId)
+      if (group !== '') {
+        const groupId = await getGroupId(group, apiKey)
+        groupIds.push(groupId)
+      }
     }
 
     // Set up team IDs (teams are the incident groups)
     const teamIds: string[] = []
     for (const team of teams) {
-      const teamId = await getTeamId(team, apiKey)
-      teamIds.push(teamId)
+      if (team !== '') {
+        const teamId = await getTeamId(team, apiKey)
+        teamIds.push(teamId)
+      }
     }
 
     // Set up environment IDs
     const environmentIds: string[] = []
     for (const environment of environments) {
-      const environmentId = await getEnvironmentId(environment, apiKey)
-      environmentIds.push(environmentId)
+      if (environment !== '') {
+        const environmentId = await getEnvironmentId(environment, apiKey)
+        environmentIds.push(environmentId)
+      }
     }
 
     // Set up incident type IDs
     const incidentTypeIds: string[] = []
     for (const incidentType of incidentTypes) {
-      const incidentTypeId = await getIncidentTypeId(incidentType, apiKey)
-      incidentTypeIds.push(incidentTypeId)
+      if (incidentType !== '') {
+        const incidentTypeId = await getIncidentTypeId(incidentType, apiKey)
+        incidentTypeIds.push(incidentTypeId)
+      }
     }
 
     // Set up severity ID

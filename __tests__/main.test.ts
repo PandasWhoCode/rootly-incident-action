@@ -305,23 +305,6 @@ describe('main.ts', () => {
       const { run } = await import('../src/main.js')
       await run()
 
-      // Verify that service/group/environment/type lookups were made with empty strings
-      // Note: empty string split by comma results in [''] not [], so functions are called once with empty string
-      expect(getServiceIdMock).toHaveBeenCalledTimes(1)
-      expect(getServiceIdMock).toHaveBeenCalledWith('', 'test-api-key')
-
-      expect(getTeamIdMock).toHaveBeenCalledTimes(1)
-      expect(getTeamIdMock).toHaveBeenCalledWith('', 'test-api-key')
-
-      expect(getGroupIdMock).toHaveBeenCalledTimes(1)
-      expect(getGroupIdMock).toHaveBeenCalledWith('', 'test-api-key')
-
-      expect(getEnvironmentIdMock).toHaveBeenCalledTimes(1)
-      expect(getEnvironmentIdMock).toHaveBeenCalledWith('', 'test-api-key')
-
-      expect(getIncidentTypeIdMock).toHaveBeenCalledTimes(1)
-      expect(getIncidentTypeIdMock).toHaveBeenCalledWith('', 'test-api-key')
-
       // Verify incident was created with arrays containing one empty string result each
       expect(createIncidentMock).toHaveBeenCalledWith(
         'test-api-key', // api key
@@ -329,10 +312,10 @@ describe('main.ts', () => {
         'This is a test incident.', // summary
         'severity-123', // severity ID
         '', // alert ID (not created)
-        ['service-123'], // Result from getServiceId('', 'test-api-key')
-        ['team-123'], // Result from getTeamId('', 'test-api-key')
-        ['env-123'], // Result from getEnvironmentId('', 'test-api-key')
-        ['type-123'] // Result from getIncidentTypeId('', 'test-api-key')
+        [], // service IDs are empty, so no service IDs
+        [], // teams are empty, so no team IDs
+        [], // environments are empty, so no environment IDs
+        [] // incident types are empty, so no incident type IDs
       )
     })
   })
