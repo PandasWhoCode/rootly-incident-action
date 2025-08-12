@@ -248,4 +248,29 @@ describe('incident.ts', () => {
 
     consoleSpy.mockRestore()
   })
+
+  it('Throws error when API returns HTTP error status', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 422,
+      statusText: 'Unprocessable Entity'
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+
+    await expect(
+      createIncident(mockApiKey, mockTitle, mockSummary, mockSeverityId)
+    ).rejects.toThrow('HTTP error! status: 422 Unprocessable Entity')
+  })
+
+  it('Handles non-Error exceptions in error handling', async () => {
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockRejectedValue('String error instead of Error object')
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+
+    await expect(
+      createIncident(mockApiKey, mockTitle, mockSummary, mockSeverityId)
+    ).rejects.toBe('String error instead of Error object')
+  })
 })
