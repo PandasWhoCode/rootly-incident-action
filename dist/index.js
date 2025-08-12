@@ -27381,7 +27381,7 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
             throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
         }
         const data = (await response.json());
-        return data.data[0].id;
+        return data.data.id;
     }
     catch (error) {
         const errorMessage = `Failed to create incident: ${error instanceof Error ? error.message : String(error)}`;

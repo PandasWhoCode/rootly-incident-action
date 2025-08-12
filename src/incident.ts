@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import { ApiResponse } from './apiResponse.js'
+import { ApiPostResponse } from './apiResponse.js'
 
 /**
  * Create an incident using the Rootly REST API.
@@ -85,8 +85,8 @@ export async function createIncident(
         `HTTP error! status: ${response.status} ${response.statusText}`
       )
     }
-    const data = (await response.json()) as ApiResponse
-    return data.data[0].id
+    const data = (await response.json()) as ApiPostResponse
+    return data.data.id
   } catch (error) {
     const errorMessage = `Failed to create incident: ${error instanceof Error ? error.message : String(error)}`
     core.error(errorMessage)
