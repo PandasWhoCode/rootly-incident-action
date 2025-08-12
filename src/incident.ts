@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import { ApiPostResponse } from './apiResponse.js'
+import { addNonEmptyArray } from './arrayOps.js'
 
 /**
  * Create an incident using the Rootly REST API.
@@ -27,9 +28,6 @@ export async function createIncident(
   environmentIds?: string[],
   incidentTypeIds?: string[]
 ): Promise<string> {
-  // Quick helper for nullish coalescing
-  const safeArray = <T>(arr?: T[]) => arr ?? []
-
   const url = 'https://api.rootly.com/v1/incidents'
 
   const attributes: Record<string, string | string[] | boolean> = {
@@ -39,21 +37,11 @@ export async function createIncident(
     severity_id: severityId
   }
 
-  if (environmentIds && environmentIds.length > 0) {
-    attributes.environment_ids = safeArray(environmentIds)
-  }
-
-  if (incidentTypeIds && incidentTypeIds.length > 0) {
-    attributes.incident_type_ids = safeArray(incidentTypeIds)
-  }
-
-  if (serviceIds && serviceIds.length > 0) {
-    attributes.service_ids = safeArray(serviceIds)
-  }
-
-  if (groupIds && groupIds.length > 0) {
-    attributes.group_ids = safeArray(groupIds)
-  }
+  // Safely add non-empty arrays to attributes
+  addNonEmptyArray(environmentIds, 'environment_ids', attributes)
+  addNonEmptyArray(incidentTypeIds, 'incident_type_ids', attributes)
+  addNonEmptyArray(serviceIds, 'service_ids', attributes)
+  addNonEmptyArray(groupIds, 'group_ids', attributes)
 
   if (alertId && alertId.trim() !== '') {
     attributes.alert_ids = [alertId]
