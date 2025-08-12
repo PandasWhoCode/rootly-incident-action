@@ -27335,8 +27335,6 @@ environmentIds // environmentIds is optional, this is an array of environment ID
  *
  */
 async function createIncident(apiKey, title, summary, severityId, alertId, serviceIds, groupIds, environmentIds, incidentTypeIds) {
-    // Quick helper for nullish coalescing
-    const safeArray = (arr) => arr ?? [];
     const url = 'https://api.rootly.com/v1/incidents';
     const attributes = {
         private: false,
@@ -27344,18 +27342,11 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
         summary: summary,
         severity_id: severityId
     };
-    if (environmentIds && environmentIds.length > 0) {
-        attributes.environment_ids = safeArray(environmentIds);
-    }
-    if (incidentTypeIds && incidentTypeIds.length > 0) {
-        attributes.incident_type_ids = safeArray(incidentTypeIds);
-    }
-    if (serviceIds && serviceIds.length > 0) {
-        attributes.service_ids = safeArray(serviceIds);
-    }
-    if (groupIds && groupIds.length > 0) {
-        attributes.group_ids = safeArray(groupIds);
-    }
+    // Safely add non-empty arrays to attributes
+    addNonEmptyArray(environmentIds, 'environment_ids', attributes);
+    addNonEmptyArray(incidentTypeIds, 'incident_type_ids', attributes);
+    addNonEmptyArray(serviceIds, 'service_ids', attributes);
+    addNonEmptyArray(groupIds, 'group_ids', attributes);
     if (alertId && alertId.trim() !== '') {
         attributes.alert_ids = [alertId];
     }
