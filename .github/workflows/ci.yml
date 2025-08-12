@@ -62,7 +62,8 @@ jobs:
         uses: ./
         with:
           services: 'my-rootly-service'
-          groups: 'my-rootly-group'
+          alert_groups: 'my-rootly-group'
+          teams: 'my-rootly-team'
           environments: 'production'
           incident_types: 'my-incident-type'
           title: 'My Test Incident'
