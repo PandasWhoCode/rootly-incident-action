@@ -74,15 +74,16 @@ the following parameters:
 - `severity` - The incident severity level
 - `summary` - Description of the incident (defaults to "My Incident
   Description")
-- `api-token` - Rootly API authentication token
+- `api_token` - Rootly API authentication token
 
 **Optional parameters:**
 
 1. `services` - Comma-separated service names
-1. `groups` - Comma-separated group names
+1. `teams` - Comma-separated team names
+1. `alert_groups` - Comma-separated alert group names
 1. `environments` - Comma-separated environment names
-1. `incident-types` - Comma-separated incident type names
-1. `create-alert` - Whether to create an associated alert (defaults to true)
+1. `incident_types` - Comma-separated incident type names
+1. `create_alert` - Whether to create an associated alert (defaults to true)
 
 **Outputs:**
 
@@ -125,11 +126,12 @@ jobs:
           summary: 'Critical service experiencing downtime'
           severity: ${{ inputs.severity }}
           services: 'web-api,database'
-          groups: 'engineering,sre'
+          teams: 'engineering,sre'
+          alert_groups: 'sre,on-call'
           environments: 'production'
-          incident-types: 'outage'
-          create-alert: 'true'
-          api-token: ${{ secrets.ROOTLY_API_KEY }}
+          incident_types: 'my-incident-type'
+          create_alert: 'true'
+          api_token: ${{ secrets.ROOTLY_API_KEY }}
 
       - name: Output Incident Details
         run: |
@@ -168,10 +170,11 @@ jobs:
             'Automated test suite failed on ${{ github.ref_name }} branch'
           severity: 'medium'
           services: 'ci-cd'
-          groups: 'engineering'
+          teams: 'engineering'
+          alert_groups: 'sre,on-call'
           environments: 'staging'
-          incident-types: 'test-failure'
-          api-token: ${{ secrets.ROOTLY_API_KEY }}
+          incident_types: 'my-incident-type'
+          api_token: ${{ secrets.ROOTLY_API_KEY }}
 ```
 
 ### Integration with Monitoring Tools
@@ -193,9 +196,12 @@ jobs:
           summary: ${{ github.event.client_payload.description }}
           severity: ${{ github.event.client_payload.severity }}
           services: ${{ github.event.client_payload.services }}
-          groups: 'sre,on-call'
+          teams: ${{ github.event.client_payload.teams }}
+          incident_types: ${{ github.event.client_payload.incident_types }}
+          alert_groups: 'sre,on-call'
+          create_alert: ${{ github.event.client_payload.create_alert || 'true' }}
           environments: ${{ github.event.client_payload.environment }}
-          api-token: ${{ secrets.ROOTLY_API_KEY }}
+          api_token: ${{ secrets.ROOTLY_API_KEY }}
 ```
 
 ## Configuration
