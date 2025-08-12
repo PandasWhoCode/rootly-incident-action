@@ -29,9 +29,7 @@ describe('alert.ts', () => {
   it('Creates an alert successfully with all parameters', async () => {
     const mockResponse = {
       ok: true,
-      json: jest.fn().mockResolvedValue({
-        data: [{ id: 'alert-123' }]
-      })
+      json: jest.fn().mockResolvedValue({ data: { id: 'alert-123' } })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
 
@@ -55,6 +53,7 @@ describe('alert.ts', () => {
           type: 'alerts',
           attributes: {
             summary: mockSummary,
+            source: 'api',
             noise: 'noise',
             status: 'triggered',
             description: mockDetails,
@@ -75,9 +74,7 @@ describe('alert.ts', () => {
 
     const mockResponse = {
       ok: true,
-      json: jest.fn().mockResolvedValue({
-        data: [{ id: 'alert-456' }]
-      })
+      json: jest.fn().mockResolvedValue({ data: { id: 'alert-456' } })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
 
@@ -94,6 +91,7 @@ describe('alert.ts', () => {
           type: 'alerts',
           attributes: {
             summary: mockSummary,
+            source: 'api',
             noise: 'noise',
             status: 'triggered',
             description: mockDetails
@@ -145,9 +143,7 @@ describe('alert.ts', () => {
 
     const mockResponse = {
       ok: true,
-      json: jest.fn().mockResolvedValue({
-        data: [{ id: 'alert-789' }]
-      })
+      json: jest.fn().mockResolvedValue({ data: { id: 'alert-789' } })
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
 
@@ -168,6 +164,7 @@ describe('alert.ts', () => {
             type: 'alerts',
             attributes: {
               summary: mockSummary,
+              source: 'api',
               noise: 'noise',
               status: 'triggered',
               description: mockDetails
