@@ -209,15 +209,16 @@ jobs:
 ### Input Parameters
 
 | Parameter        | Required | Default                   | Description                                     |
-| ---------------- | -------- | ------------------------- | ----------------------------------------------- |
+|------------------| -------- | ------------------------- |-------------------------------------------------|
+| `alert-groups`   |          | -                         | Comma-separated list of alert group names        |
 | `api-token`      | x        | -                         | Rootly API authentication token                 |
 | `create-alert`   |          | `true`                    | Whether to create an associated alert           |
 | `environments`   |          | -                         | Comma-separated list of environment names       |
-| `groups`         |          | -                         | Comma-separated list of group names             |
 | `incident-types` |          | -                         | Comma-separated list of incident type names     |
 | `services`       |          | -                         | Comma-separated list of service names           |
 | `severity`       | x        | -                         | Incident severity (low, medium, high, critical) |
 | `summary`        | x        | "My Incident Description" | Detailed incident description                   |
+| `teams`          |          | -                         | Comma-separated list of team names              |
 | `title`          | x        | -                         | The incident title                              |
 
 ### Output Parameters
@@ -232,10 +233,11 @@ jobs:
 This action integrates with the Rootly REST API to:
 
 - **Resolve service IDs** from service names
-- **Resolve group IDs** from group names
+- **Resolve alert-group IDs** from alert-group names
 - **Resolve environment IDs** from environment names
 - **Resolve severity IDs** from severity levels
 - **Resolve incident type IDs** from incident type names (if provided)
+- **Resolve team IDs** from team names (if provided)
 - **Create alerts** with the resolved parameters
 - **Create incidents** linking to the created alert
 
