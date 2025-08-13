@@ -27267,6 +27267,10 @@ function addNonEmptyArray(arr, attributeKey, attributes) {
  * @param {string} apiKey - The API key to use for authentication.
  * @param {string} summary - The summary of the alert.
  * @param {string} details - The details of the alert.
+ * @param {string} alertServiceId - The ID of the service for the alert to target.
+ * @param {string} externalId - The external ID of the alert (optional).
+ * @param {string} externalUrl - The external URL of the alert (optional).
+ * @param {'low' | 'medium' | 'high'} alertUrgency - The urgency of the alert (default is 'high').
  * @param {string[]} serviceIds - The IDs of the services to create the alert for.
  * @param {string[]} groupIds - The IDs of the groups to create the alert for.
  * @param {string[]} environmentIds - The IDs of the environments to create the alert for.
@@ -27276,6 +27280,10 @@ function addNonEmptyArray(arr, attributeKey, attributes) {
 async function createAlert(apiKey, // apiKey is required, this is the bearer token for authentication
 summary, // summary is required, this is a brief summary of the alert
 details, // details is required, this is a detailed description of the alert
+alertServiceId, // alertServiceId is required, this is the service ID for the alert to target
+alertUrgency, // alertUrgency is required, this is the urgency of the alert, default is 'high'
+externalId, // externalId is optional, this is the external ID field for the alert
+externalUrl, // externalUrl is optional, this is the external URL field for the alert
 serviceIds, // serviceIds is optional, this is an array of service IDs associated with the alert
 groupIds, // groupIds is optional, this is an array of Alert Group IDs associated with the alert
 environmentIds // environmentIds is optional, this is an array of environment IDs associated with the alert
@@ -27286,17 +27294,29 @@ environmentIds // environmentIds is optional, this is an array of environment ID
         source: 'api',
         noise: 'noise',
         status: 'triggered',
-        description: details
+        description: details,
+        notification_target_type: 'Service',
+        notification_target_id: alertServiceId,
+        urgency: alertUrgency
     };
     addNonEmptyArray(serviceIds, 'service_ids', attributes);
     addNonEmptyArray(groupIds, 'group_ids', attributes);
     addNonEmptyArray(environmentIds, 'environment_ids', attributes);
+    // Only add externalId and externalUrl if they are provided and not empty
+    if (externalId && externalId !== '') {
+        attributes['external_id'] = externalId;
+    }
+    if (externalUrl && externalUrl !== '') {
+        attributes['external_url'] = externalUrl;
+    }
     const alertBody = JSON.stringify({
         data: {
             type: 'alerts',
             attributes
         }
     });
+    // log the alert body for debugging purposes
+    console.debug(`Alert Body: ${alertBody}`);
     const options = {
         method: 'POST',
         headers: {
@@ -27312,6 +27332,35 @@ environmentIds // environmentIds is optional, this is an array of environment ID
         }
         const data = (await response.json());
         return data.data.id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Retrieve the environment ID using the Rootly REST API.
+ *
+ * @param {string} alertUrgency - The name of the alert urgency.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the environment.
+ */
+async function getAlertUrgencyId(alertUrgency, apiKey) {
+    const apiAlertUrgencyName = encodeURIComponent(alertUrgency);
+    const url = 'https://api.rootly.com/v1/alert_urgencies?filter%5Bname%5D=' +
+        apiAlertUrgencyName;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${apiKey}` }
+    };
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
+        const data = (await response.json());
+        return data.data[0].id;
     }
     catch (error) {
         console.error(error);
@@ -27565,6 +27614,10 @@ async function run() {
         const severity = coreExports.getInput('severity');
         const title = coreExports.getInput('title');
         const details = coreExports.getInput('summary');
+        const alertSvc = coreExports.getInput('alert_service');
+        const alertUrgency = coreExports.getInput('alert_urgency');
+        const alertExtId = coreExports.getInput('alert_external_id');
+        const alertExtUrl = coreExports.getInput('alert_external_url');
         const services = coreExports.getInput('services').split(',');
         const teams = coreExports.getInput('teams').split(',');
         const groups = coreExports.getInput('alert_groups').split(',');
@@ -27579,11 +27632,15 @@ async function run() {
         coreExports.debug(`Details: ${details}`);
         coreExports.debug(`Severity: ${severity}`);
         coreExports.debug(`Service: ${services}`);
-        coreExports.debug(`Team: ${teams}`);
+        coreExports.debug(`Create Alert: ${createAlertFlag}`);
+        coreExports.debug(`Alert Service: ${alertSvc}`);
+        coreExports.debug(`Alert Urgency: ${alertUrgency}`);
+        coreExports.debug(`Alert External ID: ${alertExtId}`);
+        coreExports.debug(`Alert External URL: ${alertExtUrl}`);
         coreExports.debug(`Alert Group: ${groups}`);
+        coreExports.debug(`Team: ${teams}`);
         coreExports.debug(`Environment: ${environments}`);
         coreExports.debug(`IncidentType: ${incidentTypes}`);
-        coreExports.debug(`Create Alert: ${createAlertFlag}`);
         coreExports.debug(`Api Key Length: ${apiKey.length}`); // Do not log the actual API key
         // Set up service IDs
         const serviceIds = [];
@@ -27591,6 +27648,22 @@ async function run() {
             if (service !== '') {
                 const serviceId = await getServiceId(service, apiKey);
                 serviceIds.push(serviceId);
+            }
+        }
+        // Grab the alert service ID
+        let alertSvcId = '';
+        if (createAlertFlag && alertSvc !== '') {
+            alertSvcId = await getServiceId(alertSvc, apiKey);
+        }
+        // Grab the alert urgency ID
+        let alertUrgencyId = '';
+        if (createAlertFlag) {
+            if (alertUrgency !== '') {
+                alertUrgencyId = await getAlertUrgencyId(alertUrgency, apiKey);
+            }
+            else {
+                // Default to 'high' if not provided
+                alertUrgencyId = await getAlertUrgencyId('High', apiKey);
             }
         }
         // Set up group IDs (used for alert groups)
@@ -27633,11 +27706,17 @@ async function run() {
         if (createAlertFlag) {
             alertId = await createAlert(apiKey, title, // Using title as summary for the alert
             details, // Using details as description for the alert
+            alertSvcId, // Alert Service ID
+            alertUrgencyId, // Alert Urgency ID
+            alertExtId, // External ID
+            alertExtUrl, // External URL
             serviceIds, // Service IDs
             groupIds, // Alert Group IDs
             environmentIds // Environment IDs
             );
         }
+        // Debug log the created alert ID
+        coreExports.debug(`Created Alert ID: ${alertId}`);
         // Create the incident
         const incidentId = await createIncident(apiKey, title, details, severityId, alertId, serviceIds, teamIds, environmentIds, incidentTypeIds);
         // Set outputs for other workflow steps to use

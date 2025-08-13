@@ -78,12 +78,16 @@ the following parameters:
 
 **Optional parameters:**
 
-1. `services` - Comma-separated service names
-1. `teams` - Comma-separated team names
-1. `alert_groups` - Comma-separated alert group names
-1. `environments` - Comma-separated environment names
-1. `incident_types` - Comma-separated incident type names
-1. `create_alert` - Whether to create an associated alert (defaults to true)
+1. `services` - Comma-separated service names.
+1. `teams` - Comma-separated team names.
+1. `alert_groups` - Comma-separated alert group names.
+1. `alert_service` - The name of the service the alert shall target.
+1. `alert_urgency` - The urgency of the alert to create.
+1. `alert_external_id` - An external ID to associate with the alert.
+1. `alert_external_url` - An external URL to associate with the alert.
+1. `create_alert` - Whether to create an associated alert (defaults to true).
+1. `environments` - Comma-separated environment names.
+1. `incident_types` - Comma-separated incident type names.
 
 **Outputs:**
 
@@ -127,6 +131,12 @@ jobs:
           severity: ${{ inputs.severity }}
           services: 'web-api,database'
           teams: 'engineering,sre'
+          alert_service: 'ci-cd'
+          alert_urgency: 'Low'
+          alert_external_id: '${{ github.run_id }}'
+          alert_external_url:
+            '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{
+            github.run_id }}'
           alert_groups: 'sre,on-call'
           environments: 'production'
           incident_types: 'my-incident-type'
@@ -171,7 +181,14 @@ jobs:
           severity: 'medium'
           services: 'ci-cd'
           teams: 'engineering'
+          alert_service: 'ci-cd'
+          alert_urgency: 'Low'
+          alert_external_id: '${{ github.run_id }}'
+          alert_external_url:
+            '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{
+            github.run_id }}'
           alert_groups: 'sre,on-call'
+          create_alert: 'true'
           environments: 'staging'
           incident_types: 'my-incident-type'
           api_token: ${{ secrets.ROOTLY_API_KEY }}
@@ -199,7 +216,12 @@ jobs:
           teams: ${{ github.event.client_payload.teams }}
           incident_types: ${{ github.event.client_payload.incident_types }}
           alert_groups: 'sre,on-call'
-          create_alert: ${{ github.event.client_payload.create_alert || 'true' }}
+          alert_service: 'my-alert-service'
+          alert_urgency: ${{ github.event.client_payload.alert_urgency }}
+          alert_external_id: ${{ github.event.client_payload.external_id }}
+          alert_external_url: ${{ github.event.client_payload.external_url }}
+          create_alert:
+            ${{ github.event.client_payload.create_alert || 'true' }}
           environments: ${{ github.event.client_payload.environment }}
           api_token: ${{ secrets.ROOTLY_API_KEY }}
 ```
@@ -208,18 +230,22 @@ jobs:
 
 ### Input Parameters
 
-| Parameter        | Required | Default                   | Description                                     |
-|------------------| -------- | ------------------------- |-------------------------------------------------|
-| `alert-groups`   |          | -                         | Comma-separated list of alert group names        |
-| `api-token`      | x        | -                         | Rootly API authentication token                 |
-| `create-alert`   |          | `true`                    | Whether to create an associated alert           |
-| `environments`   |          | -                         | Comma-separated list of environment names       |
-| `incident-types` |          | -                         | Comma-separated list of incident type names     |
-| `services`       |          | -                         | Comma-separated list of service names           |
-| `severity`       | x        | -                         | Incident severity (low, medium, high, critical) |
-| `summary`        | x        | "My Incident Description" | Detailed incident description                   |
-| `teams`          |          | -                         | Comma-separated list of team names              |
-| `title`          | x        | -                         | The incident title                              |
+| Parameter            | Required | Default                   | Description                                         |
+| -------------------- | -------- | ------------------------- | --------------------------------------------------- |
+| `alert_external_id`  |          | -                         | An external ID to associate with the created alert  |
+| `alert_external_url` |          | -                         | An external URL to associate with the created alert |
+| `alert_groups`       |          | -                         | Comma-separated list of alert group names           |
+| `alert_service`      |          | -                         | Service that owns the Alert                         |
+| `alert_urgency`      |          | -                         | The urgency of the alert (defaults to High)         |
+| `api-token`          | x        | -                         | Rootly API authentication token                     |
+| `create_alert`       |          | `true`                    | Whether to create an associated alert               |
+| `environments`       |          | -                         | Comma-separated list of environment names           |
+| `incident_types`     |          | -                         | Comma-separated list of incident type names         |
+| `services`           |          | -                         | Comma-separated list of service names               |
+| `severity`           | x        | -                         | Incident severity (low, medium, high, critical)     |
+| `summary`            | x        | "My Incident Description" | Detailed incident description                       |
+| `teams`              |          | -                         | Comma-separated list of team names                  |
+| `title`              | x        | -                         | The incident title                                  |
 
 ### Output Parameters
 
@@ -233,7 +259,8 @@ jobs:
 This action integrates with the Rootly REST API to:
 
 - **Resolve service IDs** from service names
-- **Resolve alert-group IDs** from alert-group names
+- **Resolve alert-group IDs** from alert_group names
+- **Resolve alert-urgency IDs** from alert_urgency name
 - **Resolve environment IDs** from environment names
 - **Resolve severity IDs** from severity levels
 - **Resolve incident type IDs** from incident type names (if provided)

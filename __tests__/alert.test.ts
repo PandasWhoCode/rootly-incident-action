@@ -17,6 +17,10 @@ describe('alert.ts', () => {
   const mockServiceIds = ['service-1', 'service-2']
   const mockGroupIds = ['group-1', 'group-2']
   const mockEnvironmentIds = ['env-1', 'env-2']
+  const mockAlertServiceId = 'svc-123' // Default value for alertServiceId
+  const mockAlertUrgency = 'urgency-123' // Default value for alertUrg
+  const mockExternalId = 'ext-123'
+  const mockExternalUrl = 'https://example.com/alert'
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -37,6 +41,10 @@ describe('alert.ts', () => {
       mockApiKey,
       mockSummary,
       mockDetails,
+      mockAlertServiceId,
+      mockAlertUrgency,
+      mockExternalId,
+      mockExternalUrl,
       mockServiceIds,
       mockGroupIds,
       mockEnvironmentIds
@@ -57,9 +65,14 @@ describe('alert.ts', () => {
             noise: 'noise',
             status: 'triggered',
             description: mockDetails,
+            notification_target_type: 'Service',
+            notification_target_id: mockAlertServiceId,
+            urgency: mockAlertUrgency,
             service_ids: mockServiceIds,
             group_ids: mockGroupIds,
-            environment_ids: mockEnvironmentIds
+            environment_ids: mockEnvironmentIds,
+            external_id: mockExternalId,
+            external_url: mockExternalUrl
           }
         }
       })
@@ -78,7 +91,13 @@ describe('alert.ts', () => {
     } as unknown as Response
     mockFetch.mockResolvedValue(mockResponse)
 
-    const result = await createAlert(mockApiKey, mockSummary, mockDetails)
+    const result = await createAlert(
+      mockApiKey,
+      mockSummary,
+      mockDetails,
+      mockAlertServiceId,
+      mockAlertUrgency
+    )
 
     expect(mockFetch).toHaveBeenCalledWith('https://api.rootly.com/v1/alerts', {
       method: 'POST',
@@ -94,7 +113,10 @@ describe('alert.ts', () => {
             source: 'api',
             noise: 'noise',
             status: 'triggered',
-            description: mockDetails
+            description: mockDetails,
+            notification_target_type: 'Service',
+            notification_target_id: 'svc-123', // Default value for alertServiceId
+            urgency: 'urgency-123' // Default value for alertUrgency
           }
         }
       })
@@ -151,6 +173,10 @@ describe('alert.ts', () => {
       mockApiKey,
       mockSummary,
       mockDetails,
+      mockAlertServiceId,
+      mockAlertUrgency,
+      undefined,
+      undefined,
       undefined,
       undefined,
       undefined
@@ -167,7 +193,10 @@ describe('alert.ts', () => {
               source: 'api',
               noise: 'noise',
               status: 'triggered',
-              description: mockDetails
+              description: mockDetails,
+              notification_target_type: 'Service',
+              notification_target_id: 'svc-123', // Default value for alertServiceId
+              urgency: 'urgency-123' // Default value for alertUrgency
             }
           }
         })
