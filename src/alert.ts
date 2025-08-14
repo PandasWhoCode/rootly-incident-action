@@ -60,9 +60,6 @@ export async function createAlert(
     }
   })
 
-  // log the alert body for debugging purposes
-  console.debug(`Alert Body: ${alertBody}`)
-
   const options = {
     method: 'POST',
     headers: {
@@ -85,6 +82,7 @@ export async function createAlert(
     return data.data.id
   } catch (error) {
     console.error(error)
+    console.log(`Alert Body:\n${alertBody}`)
     return ''
   }
 }
