@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import { createAlert } from './alert.js'
+import { getAlertUrgencyId } from './alertUrgency.js'
 import { createIncident } from './incident.js'
 import { getServiceId } from './service.js'
 import { getGroupId } from './group.js'
@@ -18,6 +19,10 @@ export async function run(): Promise<void> {
     const severity: string = core.getInput('severity')
     const title: string = core.getInput('title')
     const details: string = core.getInput('summary')
+    const alertSvc: string = core.getInput('alert_service')
+    const alertUrgency: string = core.getInput('alert_urgency')
+    const alertExtId: string = core.getInput('alert_external_id')
+    const alertExtUrl: string = core.getInput('alert_external_url')
     const services: string[] = core.getInput('services').split(',')
     const teams: string[] = core.getInput('teams').split(',')
     const groups: string[] = core.getInput('alert_groups').split(',')
@@ -34,11 +39,15 @@ export async function run(): Promise<void> {
     core.debug(`Details: ${details}`)
     core.debug(`Severity: ${severity}`)
     core.debug(`Service: ${services}`)
-    core.debug(`Team: ${teams}`)
+    core.debug(`Create Alert: ${createAlertFlag}`)
+    core.debug(`Alert Service: ${alertSvc}`)
+    core.debug(`Alert Urgency: ${alertUrgency}`)
+    core.debug(`Alert External ID: ${alertExtId}`)
+    core.debug(`Alert External URL: ${alertExtUrl}`)
     core.debug(`Alert Group: ${groups}`)
+    core.debug(`Team: ${teams}`)
     core.debug(`Environment: ${environments}`)
     core.debug(`IncidentType: ${incidentTypes}`)
-    core.debug(`Create Alert: ${createAlertFlag}`)
     core.debug(`Api Key Length: ${apiKey.length}`) // Do not log the actual API key
 
     // Set up service IDs
@@ -47,6 +56,23 @@ export async function run(): Promise<void> {
       if (service !== '') {
         const serviceId = await getServiceId(service, apiKey)
         serviceIds.push(serviceId)
+      }
+    }
+
+    // Grab the alert service ID
+    let alertSvcId: string = ''
+    if (createAlertFlag && alertSvc !== '') {
+      alertSvcId = await getServiceId(alertSvc, apiKey)
+    }
+
+    // Grab the alert urgency ID
+    let alertUrgencyId: string = ''
+    if (createAlertFlag) {
+      if (alertUrgency !== '') {
+        alertUrgencyId = await getAlertUrgencyId(alertUrgency, apiKey)
+      } else {
+        // Default to 'high' if not provided
+        alertUrgencyId = await getAlertUrgencyId('High', apiKey)
       }
     }
 
@@ -97,11 +123,18 @@ export async function run(): Promise<void> {
         apiKey,
         title, // Using title as summary for the alert
         details, // Using details as description for the alert
+        alertSvcId, // Alert Service ID
+        alertUrgencyId, // Alert Urgency ID
+        alertExtId, // External ID
+        alertExtUrl, // External URL
         serviceIds, // Service IDs
         groupIds, // Alert Group IDs
         environmentIds // Environment IDs
       )
     }
+
+    // Debug log the created alert ID
+    core.debug(`Created Alert ID: ${alertId}`)
 
     // Create the incident
     const incidentId = await createIncident(
