@@ -27315,8 +27315,6 @@ environmentIds // environmentIds is optional, this is an array of environment ID
             attributes
         }
     });
-    // log the alert body for debugging purposes
-    console.debug(`Alert Body: ${alertBody}`);
     const options = {
         method: 'POST',
         headers: {
@@ -27335,6 +27333,7 @@ environmentIds // environmentIds is optional, this is an array of environment ID
     }
     catch (error) {
         console.error(error);
+        console.log(`Alert Body:\n${alertBody}`);
         return '';
     }
 }
