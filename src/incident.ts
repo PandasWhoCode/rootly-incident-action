@@ -34,6 +34,7 @@ export async function createIncident(
     private: false,
     title: title,
     summary: summary,
+    kind: 'incident',
     severity_id: severityId
   }
 
@@ -61,7 +62,8 @@ export async function createIncident(
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/vnd.api+json'
+      'Content-Type': 'application/vnd.api+json',
+      Accept: 'application/vnd.api+json'
     },
     body: incidentBody
   }

@@ -15,6 +15,7 @@ describe('incident.ts', () => {
   const mockApiKey = 'test-api-key'
   const mockTitle = 'Test Incident'
   const mockSummary = 'This is a test incident summary'
+  const mockKind = 'incident'
   const mockSeverityId = 'severity-123'
   const mockAlertId = 'alert-456'
   const mockServiceIds = ['service-1', 'service-2']
@@ -59,7 +60,8 @@ describe('incident.ts', () => {
         method: 'POST',
         headers: {
           Authorization: 'Bearer ' + mockApiKey,
-          'Content-Type': 'application/vnd.api+json'
+          'Content-Type': 'application/vnd.api+json',
+          Accept: 'application/vnd.api+json'
         },
         body: JSON.stringify({
           data: {
@@ -68,6 +70,7 @@ describe('incident.ts', () => {
               private: false,
               title: mockTitle,
               summary: mockSummary,
+              kind: mockKind,
               severity_id: mockSeverityId,
               environment_ids: mockEnvironmentIds,
               incident_type_ids: mockIncidentTypeIds,
@@ -108,7 +111,8 @@ describe('incident.ts', () => {
         method: 'POST',
         headers: {
           Authorization: 'Bearer ' + mockApiKey,
-          'Content-Type': 'application/vnd.api+json'
+          'Content-Type': 'application/vnd.api+json',
+          Accept: 'application/vnd.api+json'
         },
         body: JSON.stringify({
           data: {
@@ -117,6 +121,7 @@ describe('incident.ts', () => {
               private: false,
               title: mockTitle,
               summary: mockSummary,
+              kind: mockKind,
               severity_id: mockSeverityId
             }
           }
@@ -158,6 +163,7 @@ describe('incident.ts', () => {
               private: false,
               title: mockTitle,
               summary: mockSummary,
+              kind: mockKind,
               severity_id: mockSeverityId,
               service_ids: mockServiceIds
             }
@@ -237,6 +243,7 @@ describe('incident.ts', () => {
               private: false,
               title: mockTitle,
               summary: mockSummary,
+              kind: mockKind,
               severity_id: mockSeverityId,
               alert_ids: [mockAlertId]
             }

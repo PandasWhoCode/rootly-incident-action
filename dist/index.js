@@ -27388,6 +27388,7 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
         private: false,
         title: title,
         summary: summary,
+        kind: 'incident',
         severity_id: severityId
     };
     // Safely add non-empty arrays to attributes
@@ -27410,7 +27411,8 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
         method: 'POST',
         headers: {
             Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/vnd.api+json'
+            'Content-Type': 'application/vnd.api+json',
+            Accept: 'application/vnd.api+json'
         },
         body: incidentBody
     };
