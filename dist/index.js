@@ -27270,7 +27270,7 @@ function addNonEmptyArray(arr, attributeKey, attributes) {
  * @param {string} alertServiceId - The ID of the service for the alert to target.
  * @param {string} externalId - The external ID of the alert (optional).
  * @param {string} externalUrl - The external URL of the alert (optional).
- * @param {'low' | 'medium' | 'high'} alertUrgency - The urgency of the alert (default is 'high').
+ * @param {'Low' | 'Medium' | 'High'} alertUrgency - The urgency of the alert (default is 'high').
  * @param {string[]} serviceIds - The IDs of the services to create the alert for.
  * @param {string[]} groupIds - The IDs of the groups to create the alert for.
  * @param {string[]} environmentIds - The IDs of the environments to create the alert for.
@@ -27297,7 +27297,7 @@ environmentIds // environmentIds is optional, this is an array of environment ID
         description: details,
         notification_target_type: 'Service',
         notification_target_id: alertServiceId,
-        urgency: alertUrgency
+        alert_urgency_id: alertUrgency
     };
     addNonEmptyArray(serviceIds, 'service_ids', attributes);
     addNonEmptyArray(groupIds, 'group_ids', attributes);
