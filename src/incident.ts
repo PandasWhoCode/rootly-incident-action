@@ -32,8 +32,10 @@ export async function createIncident(
 
   const attributes: Record<string, string | string[] | boolean> = {
     private: false,
+    public_title: title,
     title: title,
     summary: summary,
+    kind: 'normal',
     severity_id: severityId
   }
 

@@ -67,7 +67,7 @@ describe('alert.ts', () => {
             description: mockDetails,
             notification_target_type: 'Service',
             notification_target_id: mockAlertServiceId,
-            urgency: mockAlertUrgency,
+            alert_urgency_id: mockAlertUrgency,
             service_ids: mockServiceIds,
             group_ids: mockGroupIds,
             environment_ids: mockEnvironmentIds,
@@ -116,7 +116,7 @@ describe('alert.ts', () => {
             description: mockDetails,
             notification_target_type: 'Service',
             notification_target_id: 'svc-123', // Default value for alertServiceId
-            urgency: 'urgency-123' // Default value for alertUrgency
+            alert_urgency_id: 'urgency-123' // Default value for alertUrgency
           }
         }
       })
@@ -196,7 +196,7 @@ describe('alert.ts', () => {
               description: mockDetails,
               notification_target_type: 'Service',
               notification_target_id: 'svc-123', // Default value for alertServiceId
-              urgency: 'urgency-123' // Default value for alertUrgency
+              alert_urgency_id: 'urgency-123' // Default value for alertUrgency
             }
           }
         })
