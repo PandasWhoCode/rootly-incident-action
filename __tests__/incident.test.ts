@@ -15,7 +15,7 @@ describe('incident.ts', () => {
   const mockApiKey = 'test-api-key'
   const mockTitle = 'Test Incident'
   const mockSummary = 'This is a test incident summary'
-  const mockKind = 'incident'
+  const mockKind = 'normal'
   const mockSeverityId = 'severity-123'
   const mockAlertId = 'alert-456'
   const mockServiceIds = ['service-1', 'service-2']
@@ -68,6 +68,7 @@ describe('incident.ts', () => {
             type: 'incidents',
             attributes: {
               private: false,
+              public_title: mockTitle,
               title: mockTitle,
               summary: mockSummary,
               kind: mockKind,
@@ -119,6 +120,7 @@ describe('incident.ts', () => {
             type: 'incidents',
             attributes: {
               private: false,
+              public_title: mockTitle,
               title: mockTitle,
               summary: mockSummary,
               kind: mockKind,
@@ -161,6 +163,7 @@ describe('incident.ts', () => {
             type: 'incidents',
             attributes: {
               private: false,
+              public_title: mockTitle,
               title: mockTitle,
               summary: mockSummary,
               kind: mockKind,
@@ -241,6 +244,7 @@ describe('incident.ts', () => {
             type: 'incidents',
             attributes: {
               private: false,
+              public_title: mockTitle,
               title: mockTitle,
               summary: mockSummary,
               kind: mockKind,

@@ -27386,9 +27386,10 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
     const url = 'https://api.rootly.com/v1/incidents';
     const attributes = {
         private: false,
+        public_title: title,
         title: title,
         summary: summary,
-        kind: 'incident',
+        kind: 'normal',
         severity_id: severityId
     };
     // Safely add non-empty arrays to attributes
