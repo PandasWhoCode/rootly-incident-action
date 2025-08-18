@@ -63,8 +63,7 @@ export async function createIncident(
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/vnd.api+json',
-      Accept: 'application/vnd.api+json'
+      'Content-Type': 'application/vnd.api+json'
     },
     body: incidentBody
   }

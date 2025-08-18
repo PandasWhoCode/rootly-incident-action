@@ -60,8 +60,7 @@ describe('incident.ts', () => {
         method: 'POST',
         headers: {
           Authorization: 'Bearer ' + mockApiKey,
-          'Content-Type': 'application/vnd.api+json',
-          Accept: 'application/vnd.api+json'
+          'Content-Type': 'application/vnd.api+json'
         },
         body: JSON.stringify({
           data: {
@@ -112,8 +111,7 @@ describe('incident.ts', () => {
         method: 'POST',
         headers: {
           Authorization: 'Bearer ' + mockApiKey,
-          'Content-Type': 'application/vnd.api+json',
-          Accept: 'application/vnd.api+json'
+          'Content-Type': 'application/vnd.api+json'
         },
         body: JSON.stringify({
           data: {
