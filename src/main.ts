@@ -29,6 +29,8 @@ export async function run(): Promise<void> {
     const environments: string[] = core.getInput('environments').split(',')
     const incidentTypes: string[] = core.getInput('incident_types').split(',')
     const createAlertFlag: boolean = core.getInput('create_alert') == 'true'
+    const createIncidentFlag: boolean =
+      core.getInput('create_incident') == 'true'
     const createAsPublicFlag: boolean =
       core.getInput('create_public_incident') == 'true'
 
@@ -42,6 +44,7 @@ export async function run(): Promise<void> {
     core.debug(`Severity: ${severity}`)
     core.debug(`Service: ${services}`)
     core.debug(`Create Alert: ${createAlertFlag}`)
+    core.debug(`Create Incident: ${createIncidentFlag}`)
     core.debug(`Alert Service: ${alertSvc}`)
     core.debug(`Alert Urgency: ${alertUrgency}`)
     core.debug(`Alert External ID: ${alertExtId}`)
@@ -52,6 +55,13 @@ export async function run(): Promise<void> {
     core.debug(`IncidentType: ${incidentTypes}`)
     core.debug(`Create as Public Incident: ${createAsPublicFlag}`)
     core.debug(`Api Key Length: ${apiKey.length}`) // Do not log the actual API key
+
+    // Ensure either createAlertFlag or createIncidentFlag is true
+    if (!createAlertFlag && !createIncidentFlag) {
+      throw new Error(
+        'At least one of create_alert or create_incident_flag must be true.'
+      )
+    }
 
     // Set up service IDs
     const serviceIds: string[] = []
@@ -91,10 +101,12 @@ export async function run(): Promise<void> {
 
     // Set up team IDs (teams are the incident groups)
     const teamIds: string[] = []
-    for (const team of teams) {
-      if (team !== '') {
-        const teamId = await getTeamId(team, apiKey)
-        teamIds.push(teamId)
+    if (createIncidentFlag) {
+      for (const team of teams) {
+        if (team !== '') {
+          const teamId = await getTeamId(team, apiKey)
+          teamIds.push(teamId)
+        }
       }
     }
 
@@ -109,15 +121,20 @@ export async function run(): Promise<void> {
 
     // Set up incident type IDs
     const incidentTypeIds: string[] = []
-    for (const incidentType of incidentTypes) {
-      if (incidentType !== '') {
-        const incidentTypeId = await getIncidentTypeId(incidentType, apiKey)
-        incidentTypeIds.push(incidentTypeId)
+    if (createIncidentFlag) {
+      for (const incidentType of incidentTypes) {
+        if (incidentType !== '') {
+          const incidentTypeId = await getIncidentTypeId(incidentType, apiKey)
+          incidentTypeIds.push(incidentTypeId)
+        }
       }
     }
 
     // Set up severity ID
-    const severityId = await getSeverityId(severity, apiKey)
+    let severityId = ''
+    if (createIncidentFlag) {
+      severityId = await getSeverityId(severity, apiKey)
+    }
 
     // Create the alert
     let alertId = ''
@@ -140,18 +157,21 @@ export async function run(): Promise<void> {
     core.debug(`Created Alert ID: ${alertId}`)
 
     // Create the incident
-    const incidentId = await createIncident(
-      apiKey,
-      title,
-      details,
-      severityId,
-      createAsPublicFlag,
-      alertId,
-      serviceIds,
-      teamIds,
-      environmentIds,
-      incidentTypeIds
-    )
+    let incidentId = ''
+    if (createIncidentFlag) {
+      incidentId = await createIncident(
+        apiKey,
+        title,
+        details,
+        severityId,
+        createAsPublicFlag,
+        alertId,
+        serviceIds,
+        teamIds,
+        environmentIds,
+        incidentTypeIds
+      )
+    }
 
     // Set outputs for other workflow steps to use
     core.setOutput('incident-id', incidentId)
