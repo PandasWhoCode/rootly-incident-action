@@ -9,6 +9,7 @@ import { addNonEmptyArray } from './arrayOps.js'
  * @param {string} title - The title of the incident.
  * @param {string} summary - The description of the incident.
  * @param {string} severityId - The ID of the severity of the incident.
+ * @param {boolean} createAsPublic - Whether to create the incident as public or private.
  * @param {string} alertId - The ID of the created alert. (If an alert was created.)
  * @param {string[]} serviceIds - The IDs of the services to create the incident for.
  * @param {string[]} groupIds - The IDs of the groups to create the incident for.
@@ -22,19 +23,28 @@ export async function createIncident(
   title: string,
   summary: string,
   severityId: string,
+  createAsPublic: boolean,
   alertId?: string,
   serviceIds?: string[],
   groupIds?: string[],
   environmentIds?: string[],
   incidentTypeIds?: string[]
 ): Promise<string> {
+  // Determine if the incident should be private or public
+  let setPrivate: boolean = true
+  if (createAsPublic) {
+    setPrivate = false
+  }
+
+  // Build the rootly request
   const url = 'https://api.rootly.com/v1/incidents'
 
   const attributes: Record<string, string | string[] | boolean> = {
-    private: false,
+    private: setPrivate,
     public_title: title,
     title: title,
     summary: summary,
+    status: 'started',
     kind: 'normal',
     severity_id: severityId
   }
@@ -55,9 +65,6 @@ export async function createIncident(
       attributes
     }
   })
-
-  // log the incident body for debugging
-  core.debug(`Incident Body: ${incidentBody}`)
 
   const options = {
     method: 'POST',
@@ -80,6 +87,7 @@ export async function createIncident(
   } catch (error) {
     const errorMessage = `Failed to create incident: ${error instanceof Error ? error.message : String(error)}`
     core.error(errorMessage)
+    core.debug(`Incident Body:\n${incidentBody}`)
     throw error
   }
 }

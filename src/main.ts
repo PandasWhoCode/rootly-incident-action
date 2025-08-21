@@ -29,6 +29,8 @@ export async function run(): Promise<void> {
     const environments: string[] = core.getInput('environments').split(',')
     const incidentTypes: string[] = core.getInput('incident_types').split(',')
     const createAlertFlag: boolean = core.getInput('create_alert') == 'true'
+    const createAsPublicFlag: boolean =
+      core.getInput('create_public_incident') == 'true'
 
     // The API key is secret and shall not be logged in any way.
     // The API key shall be used during requests but never logged or stored.
@@ -48,6 +50,7 @@ export async function run(): Promise<void> {
     core.debug(`Team: ${teams}`)
     core.debug(`Environment: ${environments}`)
     core.debug(`IncidentType: ${incidentTypes}`)
+    core.debug(`Create as Public Incident: ${createAsPublicFlag}`)
     core.debug(`Api Key Length: ${apiKey.length}`) // Do not log the actual API key
 
     // Set up service IDs
@@ -142,6 +145,7 @@ export async function run(): Promise<void> {
       title,
       details,
       severityId,
+      createAsPublicFlag,
       alertId,
       serviceIds,
       teamIds,

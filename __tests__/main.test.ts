@@ -22,6 +22,7 @@ describe('main.ts', () => {
       title: string,
       summary: string,
       severityId: string,
+      createAsPublic: boolean,
       alertId: string,
       serviceIds: string[],
       groupIds: string[],
@@ -136,6 +137,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1,Environment2') // environments
         .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
         .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
       // Import and run the main function
@@ -201,6 +203,7 @@ describe('main.ts', () => {
         'Test Incident',
         'This is a test incident.',
         'severity-123',
+        false,
         'alert-123',
         ['service-123', 'service-123'],
         ['team-123', 'team-123'],
@@ -231,6 +234,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1') // environments
         .mockReturnValueOnce('IncidentType1') // incident-types
         .mockReturnValueOnce('false') // create-alert
+        .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
       // Import and run the main function
@@ -246,6 +250,54 @@ describe('main.ts', () => {
         'Test Incident',
         'This is a test incident.',
         'severity-123',
+        false,
+        '',
+        ['service-123'],
+        ['team-123'],
+        ['env-123'],
+        ['type-123']
+      )
+
+      // Verify outputs were set
+      expect(core.setOutput).toHaveBeenCalledWith('incident-id', 'incident-456')
+      expect(core.setOutput).toHaveBeenCalledWith('alert-id', '')
+    })
+  })
+
+  describe('Create public incident enabled', () => {
+    it('Runs successfully creating a public incident', async () => {
+      // Set up input mocks for alert creation disabled
+      core.getInput
+        .mockReturnValueOnce('high') // severity
+        .mockReturnValueOnce('Test Incident') // title
+        .mockReturnValueOnce('This is a test incident.') // summary
+        .mockReturnValueOnce('') // Alert Service
+        .mockReturnValueOnce('') // Alert Urgency
+        .mockReturnValueOnce('') // External ID
+        .mockReturnValueOnce('') // External URL
+        .mockReturnValueOnce('Service1') // services
+        .mockReturnValueOnce('Team1') // teams
+        .mockReturnValueOnce('Group1') // alert_groups
+        .mockReturnValueOnce('Environment1') // environments
+        .mockReturnValueOnce('IncidentType1') // incident-types
+        .mockReturnValueOnce('false') // create-alert
+        .mockReturnValueOnce('true') // create-public-incident
+        .mockReturnValueOnce('test-api-key') // api key
+
+      // Import and run the main function
+      const { run } = await import('../src/main.js')
+      await run()
+
+      // Verify alert was not created
+      expect(createAlertMock).not.toHaveBeenCalled()
+
+      // Verify incident was created without alert ID
+      expect(createIncidentMock).toHaveBeenCalledWith(
+        'test-api-key',
+        'Test Incident',
+        'This is a test incident.',
+        'severity-123',
+        true,
         '',
         ['service-123'],
         ['team-123'],
@@ -279,6 +331,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1,Environment2') // environments
         .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
         .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
       // Import and run the main function
@@ -308,6 +361,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1,Environment2') // environments
         .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
         .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
       // Import and run the main function
@@ -336,6 +390,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // environments (empty)
         .mockReturnValueOnce('') // incident-types (empty)
         .mockReturnValueOnce('false') // create-alert
+        .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
       // Import and run the main function
@@ -348,6 +403,7 @@ describe('main.ts', () => {
         'Test Incident', // title
         'This is a test incident.', // summary
         'severity-123', // severity ID
+        false, // create as private
         '', // alert ID (not created)
         [], // service IDs are empty, so no service IDs
         [], // teams are empty, so no team IDs
@@ -373,6 +429,7 @@ describe('main.ts', () => {
       .mockReturnValueOnce('Environment1') // environments
       .mockReturnValueOnce('IncidentType1') // incident_types
       .mockReturnValueOnce('true') // create_alert (true to trigger urgency logic)
+      .mockReturnValueOnce('false') // create_public_incident
       .mockReturnValueOnce('test-api-key') // api_key
 
     // Import and run the main function
@@ -402,6 +459,7 @@ describe('main.ts', () => {
       .mockReturnValueOnce('Environment1') // environments
       .mockReturnValueOnce('IncidentType1') // incident_types
       .mockReturnValueOnce('false') // create_alert
+      .mockReturnValueOnce('false') // create_public_incident
       .mockReturnValueOnce('test-api-key') // api_key
 
     // Import and run the main function
@@ -430,6 +488,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1,Environment2') // environments
         .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
         .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
       // Import and run the main function
@@ -457,6 +516,9 @@ describe('main.ts', () => {
       )
       expect(core.debug).toHaveBeenCalledWith(
         'IncidentType: IncidentType1,IncidentType2'
+      )
+      expect(core.debug).toHaveBeenCalledWith(
+        'Create as Public Incident: false'
       )
       expect(core.debug).toHaveBeenCalledWith('Api Key Length: 12') // Length of 'test-api-key')
     })
