@@ -27374,6 +27374,7 @@ async function getAlertUrgencyId(alertUrgency, apiKey) {
  * @param {string} title - The title of the incident.
  * @param {string} summary - The description of the incident.
  * @param {string} severityId - The ID of the severity of the incident.
+ * @param {boolean} createAsPublic - Whether to create the incident as public or private.
  * @param {string} alertId - The ID of the created alert. (If an alert was created.)
  * @param {string[]} serviceIds - The IDs of the services to create the incident for.
  * @param {string[]} groupIds - The IDs of the groups to create the incident for.
@@ -27382,13 +27383,20 @@ async function getAlertUrgencyId(alertUrgency, apiKey) {
  * @returns {string} The ID of the incident.
  *
  */
-async function createIncident(apiKey, title, summary, severityId, alertId, serviceIds, groupIds, environmentIds, incidentTypeIds) {
+async function createIncident(apiKey, title, summary, severityId, createAsPublic, alertId, serviceIds, groupIds, environmentIds, incidentTypeIds) {
+    // Determine if the incident should be private or public
+    let setPrivate = true;
+    if (createAsPublic) {
+        setPrivate = false;
+    }
+    // Build the rootly request
     const url = 'https://api.rootly.com/v1/incidents';
     const attributes = {
-        private: false,
+        private: setPrivate,
         public_title: title,
         title: title,
         summary: summary,
+        status: 'started',
         kind: 'normal',
         severity_id: severityId
     };
@@ -27406,8 +27414,6 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
             attributes
         }
     });
-    // log the incident body for debugging
-    coreExports.debug(`Incident Body: ${incidentBody}`);
     const options = {
         method: 'POST',
         headers: {
@@ -27427,6 +27433,7 @@ async function createIncident(apiKey, title, summary, severityId, alertId, servi
     catch (error) {
         const errorMessage = `Failed to create incident: ${error instanceof Error ? error.message : String(error)}`;
         coreExports.error(errorMessage);
+        coreExports.debug(`Incident Body:\n${incidentBody}`);
         throw error;
     }
 }
@@ -27625,6 +27632,7 @@ async function run() {
         const environments = coreExports.getInput('environments').split(',');
         const incidentTypes = coreExports.getInput('incident_types').split(',');
         const createAlertFlag = coreExports.getInput('create_alert') == 'true';
+        const createAsPublicFlag = coreExports.getInput('create_public_incident') == 'true';
         // The API key is secret and shall not be logged in any way.
         // The API key shall be used during requests but never logged or stored.
         const apiKey = coreExports.getInput('api_key');
@@ -27642,6 +27650,7 @@ async function run() {
         coreExports.debug(`Team: ${teams}`);
         coreExports.debug(`Environment: ${environments}`);
         coreExports.debug(`IncidentType: ${incidentTypes}`);
+        coreExports.debug(`Create as Public Incident: ${createAsPublicFlag}`);
         coreExports.debug(`Api Key Length: ${apiKey.length}`); // Do not log the actual API key
         // Set up service IDs
         const serviceIds = [];
@@ -27719,7 +27728,7 @@ async function run() {
         // Debug log the created alert ID
         coreExports.debug(`Created Alert ID: ${alertId}`);
         // Create the incident
-        const incidentId = await createIncident(apiKey, title, details, severityId, alertId, serviceIds, teamIds, environmentIds, incidentTypeIds);
+        const incidentId = await createIncident(apiKey, title, details, severityId, createAsPublicFlag, alertId, serviceIds, teamIds, environmentIds, incidentTypeIds);
         // Set outputs for other workflow steps to use
         coreExports.setOutput('incident-id', incidentId);
         coreExports.setOutput('alert-id', alertId);

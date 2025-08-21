@@ -40,6 +40,10 @@ inputs:
     description: Whether to create an alert for the incident.
     required: false
     default: 'true'
+  create_public_incident:
+    description: Set to true to create a public incident.
+    required: false
+    default: 'false'
   environments:
     description:
       The comma-separated names of the environments to create the incident for.

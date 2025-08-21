@@ -17,6 +17,7 @@ describe('incident.ts', () => {
   const mockSummary = 'This is a test incident summary'
   const mockKind = 'normal'
   const mockSeverityId = 'severity-123'
+  const createAsPublic = false // Default value for createAsPublic
   const mockAlertId = 'alert-456'
   const mockServiceIds = ['service-1', 'service-2']
   const mockGroupIds = ['group-1', 'group-2']
@@ -47,6 +48,7 @@ describe('incident.ts', () => {
       mockTitle,
       mockSummary,
       mockSeverityId,
+      createAsPublic,
       mockAlertId,
       mockServiceIds,
       mockGroupIds,
@@ -66,10 +68,11 @@ describe('incident.ts', () => {
           data: {
             type: 'incidents',
             attributes: {
-              private: false,
+              private: true,
               public_title: mockTitle,
               title: mockTitle,
               summary: mockSummary,
+              status: 'started',
               kind: mockKind,
               severity_id: mockSeverityId,
               environment_ids: mockEnvironmentIds,
@@ -102,7 +105,8 @@ describe('incident.ts', () => {
       mockApiKey,
       mockTitle,
       mockSummary,
-      mockSeverityId
+      mockSeverityId,
+      createAsPublic
     )
 
     expect(mockFetch).toHaveBeenCalledWith(
@@ -117,10 +121,11 @@ describe('incident.ts', () => {
           data: {
             type: 'incidents',
             attributes: {
-              private: false,
+              private: true,
               public_title: mockTitle,
               title: mockTitle,
               summary: mockSummary,
+              status: 'started',
               kind: mockKind,
               severity_id: mockSeverityId
             }
@@ -149,6 +154,53 @@ describe('incident.ts', () => {
       mockTitle,
       mockSummary,
       mockSeverityId,
+      createAsPublic,
+      undefined,
+      mockServiceIds
+    )
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.rootly.com/v1/incidents',
+      expect.objectContaining({
+        body: JSON.stringify({
+          data: {
+            type: 'incidents',
+            attributes: {
+              private: true,
+              public_title: mockTitle,
+              title: mockTitle,
+              summary: mockSummary,
+              status: 'started',
+              kind: mockKind,
+              severity_id: mockSeverityId,
+              service_ids: mockServiceIds
+            }
+          }
+        })
+      })
+    )
+    expect(result).toBe('incident-789')
+
+    consoleSpy.mockRestore()
+  })
+
+  it('Handles createAsPublic correctly', async () => {
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
+
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockResolvedValue({ data: { id: 'incident-789' } })
+    } as unknown as Response
+    mockFetch.mockResolvedValue(mockResponse)
+
+    const result = await createIncident(
+      mockApiKey,
+      mockTitle,
+      mockSummary,
+      mockSeverityId,
+      !createAsPublic,
       undefined,
       mockServiceIds
     )
@@ -164,6 +216,7 @@ describe('incident.ts', () => {
               public_title: mockTitle,
               title: mockTitle,
               summary: mockSummary,
+              status: 'started',
               kind: mockKind,
               severity_id: mockSeverityId,
               service_ids: mockServiceIds
@@ -184,7 +237,13 @@ describe('incident.ts', () => {
       .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
 
     await expect(
-      createIncident(mockApiKey, mockTitle, mockSummary, mockSeverityId)
+      createIncident(
+        mockApiKey,
+        mockTitle,
+        mockSummary,
+        mockSeverityId,
+        createAsPublic
+      )
     ).rejects.toThrow('Network error')
 
     consoleSpy.mockRestore()
@@ -205,7 +264,13 @@ describe('incident.ts', () => {
       .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
 
     await expect(
-      createIncident(mockApiKey, mockTitle, mockSummary, mockSeverityId)
+      createIncident(
+        mockApiKey,
+        mockTitle,
+        mockSummary,
+        mockSeverityId,
+        createAsPublic
+      )
     ).rejects.toThrow('JSON parse error')
 
     consoleSpy.mockRestore()
@@ -227,6 +292,7 @@ describe('incident.ts', () => {
       mockTitle,
       mockSummary,
       mockSeverityId,
+      createAsPublic,
       mockAlertId,
       [],
       [],
@@ -241,10 +307,11 @@ describe('incident.ts', () => {
           data: {
             type: 'incidents',
             attributes: {
-              private: false,
+              private: true,
               public_title: mockTitle,
               title: mockTitle,
               summary: mockSummary,
+              status: 'started',
               kind: mockKind,
               severity_id: mockSeverityId,
               alert_ids: [mockAlertId]
@@ -267,7 +334,13 @@ describe('incident.ts', () => {
     mockFetch.mockResolvedValue(mockResponse)
 
     await expect(
-      createIncident(mockApiKey, mockTitle, mockSummary, mockSeverityId)
+      createIncident(
+        mockApiKey,
+        mockTitle,
+        mockSummary,
+        mockSeverityId,
+        createAsPublic
+      )
     ).rejects.toThrow('HTTP error! status: 422 Unprocessable Entity')
   })
 
@@ -279,7 +352,13 @@ describe('incident.ts', () => {
     mockFetch.mockResolvedValue(mockResponse)
 
     await expect(
-      createIncident(mockApiKey, mockTitle, mockSummary, mockSeverityId)
+      createIncident(
+        mockApiKey,
+        mockTitle,
+        mockSummary,
+        mockSeverityId,
+        createAsPublic
+      )
     ).rejects.toBe('String error instead of Error object')
   })
 })
