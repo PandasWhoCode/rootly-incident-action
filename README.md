@@ -223,7 +223,8 @@ jobs:
           alert_external_url: ${{ github.event.client_payload.external_url }}
           create_alert:
             ${{ github.event.client_payload.create_alert || 'true' }}
-          create_public_incident: ${{ github.event.client_payload.create_public_incident || 'false' }}
+          create_public_incident:
+            ${{ github.event.client_payload.create_public_incident || 'false' }}
           environments: ${{ github.event.client_payload.environment }}
           api_token: ${{ secrets.ROOTLY_API_KEY }}
 ```
@@ -233,7 +234,7 @@ jobs:
 ### Input Parameters
 
 | Parameter                | Required | Default                   | Description                                                       |
-|--------------------------|----------|---------------------------|-------------------------------------------------------------------|
+| ------------------------ | -------- | ------------------------- | ----------------------------------------------------------------- |
 | `alert_external_id`      |          | -                         | An external ID to associate with the created alert                |
 | `alert_external_url`     |          | -                         | An external URL to associate with the created alert               |
 | `alert_groups`           |          | -                         | Comma-separated list of alert group names                         |
