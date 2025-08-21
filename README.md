@@ -189,6 +189,7 @@ jobs:
             github.run_id }}'
           alert_groups: 'sre,on-call'
           create_alert: 'true'
+          create_public_incident: 'true'
           environments: 'staging'
           incident_types: 'my-incident-type'
           api_token: ${{ secrets.ROOTLY_API_KEY }}
@@ -222,6 +223,7 @@ jobs:
           alert_external_url: ${{ github.event.client_payload.external_url }}
           create_alert:
             ${{ github.event.client_payload.create_alert || 'true' }}
+          create_public_incident: ${{ github.event.client_payload.create_public_incident || 'false' }}
           environments: ${{ github.event.client_payload.environment }}
           api_token: ${{ secrets.ROOTLY_API_KEY }}
 ```
@@ -230,22 +232,23 @@ jobs:
 
 ### Input Parameters
 
-| Parameter            | Required | Default                   | Description                                         |
-| -------------------- | -------- | ------------------------- | --------------------------------------------------- |
-| `alert_external_id`  |          | -                         | An external ID to associate with the created alert  |
-| `alert_external_url` |          | -                         | An external URL to associate with the created alert |
-| `alert_groups`       |          | -                         | Comma-separated list of alert group names           |
-| `alert_service`      |          | -                         | Service that owns the Alert                         |
-| `alert_urgency`      |          | -                         | The urgency of the alert (defaults to High)         |
-| `api-token`          | x        | -                         | Rootly API authentication token                     |
-| `create_alert`       |          | `true`                    | Whether to create an associated alert               |
-| `environments`       |          | -                         | Comma-separated list of environment names           |
-| `incident_types`     |          | -                         | Comma-separated list of incident type names         |
-| `services`           |          | -                         | Comma-separated list of service names               |
-| `severity`           | x        | -                         | Incident severity (low, medium, high, critical)     |
-| `summary`            | x        | "My Incident Description" | Detailed incident description                       |
-| `teams`              |          | -                         | Comma-separated list of team names                  |
-| `title`              | x        | -                         | The incident title                                  |
+| Parameter                | Required | Default                   | Description                                                       |
+|--------------------------|----------|---------------------------|-------------------------------------------------------------------|
+| `alert_external_id`      |          | -                         | An external ID to associate with the created alert                |
+| `alert_external_url`     |          | -                         | An external URL to associate with the created alert               |
+| `alert_groups`           |          | -                         | Comma-separated list of alert group names                         |
+| `alert_service`          |          | -                         | Service that owns the Alert                                       |
+| `alert_urgency`          |          | -                         | The urgency of the alert (defaults to High)                       |
+| `api-token`              | x        | -                         | Rootly API authentication token                                   |
+| `create_alert`           |          | `true`                    | Whether to create an associated alert                             |
+| `create_public_incident` |          | `false`                   | Whether to create a public incident - defaults to false (private) |
+| `environments`           |          | -                         | Comma-separated list of environment names                         |
+| `incident_types`         |          | -                         | Comma-separated list of incident type names                       |
+| `services`               |          | -                         | Comma-separated list of service names                             |
+| `severity`               | x        | -                         | Incident severity (low, medium, high, critical)                   |
+| `summary`                | x        | "My Incident Description" | Detailed incident description                                     |
+| `teams`                  |          | -                         | Comma-separated list of team names                                |
+| `title`                  | x        | -                         | The incident title                                                |
 
 ### Output Parameters
 
