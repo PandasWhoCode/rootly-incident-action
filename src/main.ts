@@ -30,7 +30,7 @@ export async function run(): Promise<void> {
     const incidentTypes: string[] = core.getInput('incident_types').split(',')
     const createAlertFlag: boolean = core.getInput('create_alert') == 'true'
     const createIncidentFlag: boolean =
-      core.getInput('create_incident_flag') == 'true'
+      core.getInput('create_incident') == 'true'
     const createAsPublicFlag: boolean =
       core.getInput('create_public_incident') == 'true'
 
