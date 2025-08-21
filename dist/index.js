@@ -27632,6 +27632,7 @@ async function run() {
         const environments = coreExports.getInput('environments').split(',');
         const incidentTypes = coreExports.getInput('incident_types').split(',');
         const createAlertFlag = coreExports.getInput('create_alert') == 'true';
+        const createIncidentFlag = coreExports.getInput('create_incident_flag') == 'true';
         const createAsPublicFlag = coreExports.getInput('create_public_incident') == 'true';
         // The API key is secret and shall not be logged in any way.
         // The API key shall be used during requests but never logged or stored.
@@ -27642,6 +27643,7 @@ async function run() {
         coreExports.debug(`Severity: ${severity}`);
         coreExports.debug(`Service: ${services}`);
         coreExports.debug(`Create Alert: ${createAlertFlag}`);
+        coreExports.debug(`Create Incident: ${createIncidentFlag}`);
         coreExports.debug(`Alert Service: ${alertSvc}`);
         coreExports.debug(`Alert Urgency: ${alertUrgency}`);
         coreExports.debug(`Alert External ID: ${alertExtId}`);
@@ -27652,6 +27654,10 @@ async function run() {
         coreExports.debug(`IncidentType: ${incidentTypes}`);
         coreExports.debug(`Create as Public Incident: ${createAsPublicFlag}`);
         coreExports.debug(`Api Key Length: ${apiKey.length}`); // Do not log the actual API key
+        // Ensure either createAlertFlag or createIncidentFlag is true
+        if (!createAlertFlag && !createIncidentFlag) {
+            throw new Error('At least one of create_alert or create_incident_flag must be true.');
+        }
         // Set up service IDs
         const serviceIds = [];
         for (const service of services) {
@@ -27687,10 +27693,12 @@ async function run() {
         }
         // Set up team IDs (teams are the incident groups)
         const teamIds = [];
-        for (const team of teams) {
-            if (team !== '') {
-                const teamId = await getTeamId(team, apiKey);
-                teamIds.push(teamId);
+        if (createIncidentFlag) {
+            for (const team of teams) {
+                if (team !== '') {
+                    const teamId = await getTeamId(team, apiKey);
+                    teamIds.push(teamId);
+                }
             }
         }
         // Set up environment IDs
@@ -27703,14 +27711,19 @@ async function run() {
         }
         // Set up incident type IDs
         const incidentTypeIds = [];
-        for (const incidentType of incidentTypes) {
-            if (incidentType !== '') {
-                const incidentTypeId = await getIncidentTypeId(incidentType, apiKey);
-                incidentTypeIds.push(incidentTypeId);
+        if (createIncidentFlag) {
+            for (const incidentType of incidentTypes) {
+                if (incidentType !== '') {
+                    const incidentTypeId = await getIncidentTypeId(incidentType, apiKey);
+                    incidentTypeIds.push(incidentTypeId);
+                }
             }
         }
         // Set up severity ID
-        const severityId = await getSeverityId(severity, apiKey);
+        let severityId = '';
+        if (createIncidentFlag) {
+            severityId = await getSeverityId(severity, apiKey);
+        }
         // Create the alert
         let alertId = '';
         if (createAlertFlag) {
@@ -27728,7 +27741,10 @@ async function run() {
         // Debug log the created alert ID
         coreExports.debug(`Created Alert ID: ${alertId}`);
         // Create the incident
-        const incidentId = await createIncident(apiKey, title, details, severityId, createAsPublicFlag, alertId, serviceIds, teamIds, environmentIds, incidentTypeIds);
+        let incidentId = '';
+        if (createIncidentFlag) {
+            incidentId = await createIncident(apiKey, title, details, severityId, createAsPublicFlag, alertId, serviceIds, teamIds, environmentIds, incidentTypeIds);
+        }
         // Set outputs for other workflow steps to use
         coreExports.setOutput('incident-id', incidentId);
         coreExports.setOutput('alert-id', alertId);

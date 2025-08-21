@@ -71,7 +71,6 @@ the following parameters:
 **Required parameters:**
 
 - `title` - The incident title
-- `severity` - The incident severity level
 - `summary` - Description of the incident (defaults to "My Incident
   Description")
 - `api_token` - Rootly API authentication token
@@ -79,6 +78,7 @@ the following parameters:
 **Optional parameters:**
 
 1. `services` - Comma-separated service names.
+1. `severity` - The incident severity level
 1. `teams` - Comma-separated team names.
 1. `alert_groups` - Comma-separated alert group names.
 1. `alert_service` - The name of the service the alert shall target.
@@ -86,12 +86,15 @@ the following parameters:
 1. `alert_external_id` - An external ID to associate with the alert.
 1. `alert_external_url` - An external URL to associate with the alert.
 1. `create_alert` - Whether to create an associated alert (defaults to true).
+1. `create_incident` - Whether to create an incident (defaults to true).
+1. `create_public_incident` - Whether to create a public incident (defaults to
+   false, meaning the incident is private).
 1. `environments` - Comma-separated environment names.
 1. `incident_types` - Comma-separated incident type names.
 
 **Outputs:**
 
-- `incident-id` - ID of the created incident for API usage
+- `incident-id` - ID of the created incident (if created) for API usage
 - `alert-id` - ID of the created alert (if created) for API usage
 
 ## Usage
@@ -141,6 +144,41 @@ jobs:
           environments: 'production'
           incident_types: 'my-incident-type'
           create_alert: 'true'
+          api_token: ${{ secrets.ROOTLY_API_KEY }}
+
+      - name: Output Incident Details
+        run: |
+          echo "Incident ID: ${{ steps.rootly-incident.outputs.incident-id }}"
+          echo "Alert ID: ${{ steps.rootly-incident.outputs.alert-id }}"
+```
+
+### Basic Usage with Alert Creation
+
+```yaml
+jobs:
+  create-incident:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Create Rootly Alert
+        id: rootly-alert
+        uses: pandaswhocode/rootly-incident-action@v1
+        with:
+          title: 'Production Service Outage'
+          summary: 'Critical service experiencing downtime'
+          services: 'web-api,database'
+          alert_service: 'ci-cd'
+          alert_urgency: 'Low'
+          alert_external_id: '${{ github.run_id }}'
+          alert_external_url:
+            '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{
+            github.run_id }}'
+          alert_groups: 'sre,on-call'
+          environments: 'production'
+          create_incident: 'false' # only create the alert
           api_token: ${{ secrets.ROOTLY_API_KEY }}
 
       - name: Output Incident Details

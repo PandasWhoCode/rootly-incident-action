@@ -137,6 +137,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1,Environment2') // environments
         .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
         .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('true') // create-incident
         .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
@@ -234,6 +235,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1') // environments
         .mockReturnValueOnce('IncidentType1') // incident-types
         .mockReturnValueOnce('false') // create-alert
+        .mockReturnValueOnce('true') // create-incident
         .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
@@ -281,6 +283,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1') // environments
         .mockReturnValueOnce('IncidentType1') // incident-types
         .mockReturnValueOnce('false') // create-alert
+        .mockReturnValueOnce('true') // create-incident
         .mockReturnValueOnce('true') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
@@ -331,6 +334,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1,Environment2') // environments
         .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
         .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('true') // create-incident
         .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
@@ -361,6 +365,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1,Environment2') // environments
         .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
         .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('true') // create-incident
         .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
@@ -390,6 +395,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // environments (empty)
         .mockReturnValueOnce('') // incident-types (empty)
         .mockReturnValueOnce('false') // create-alert
+        .mockReturnValueOnce('true') // create-incident
         .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
@@ -429,6 +435,7 @@ describe('main.ts', () => {
       .mockReturnValueOnce('Environment1') // environments
       .mockReturnValueOnce('IncidentType1') // incident_types
       .mockReturnValueOnce('true') // create_alert (true to trigger urgency logic)
+      .mockReturnValueOnce('true') // create_incident
       .mockReturnValueOnce('false') // create_public_incident
       .mockReturnValueOnce('test-api-key') // api_key
 
@@ -441,6 +448,130 @@ describe('main.ts', () => {
 
     // Verify alert was created with the urgency ID
     expect(createAlertMock).toHaveBeenCalled()
+  })
+
+  it('Throws error when both create_alert and create_incident_flag are false', async () => {
+    // Set up input mocks with both flags false
+    core.getInput
+      .mockReturnValueOnce('critical') // severity
+      .mockReturnValueOnce('Test Incident') // title
+      .mockReturnValueOnce('This is a test incident.') // details
+      .mockReturnValueOnce('Service1') // alert_service
+      .mockReturnValueOnce('High') // alert_urgency
+      .mockReturnValueOnce('ext-123') // external_id
+      .mockReturnValueOnce('https://example.com/alert') // external_url
+      .mockReturnValueOnce('Service1') // services
+      .mockReturnValueOnce('Team1') // teams
+      .mockReturnValueOnce('Group1') // alert_groups
+      .mockReturnValueOnce('Environment1') // environments
+      .mockReturnValueOnce('IncidentType1') // incident_types
+      .mockReturnValueOnce('false') // create_alert
+      .mockReturnValueOnce('false') // create_incident_flag
+      .mockReturnValueOnce('false') // create_public_incident
+      .mockReturnValueOnce('test-api-key') // api_key
+
+    // Import and run the main function
+    const { run } = await import('../src/main.js')
+    await run()
+
+    // Verify that the action was marked as failed with the correct error message
+    expect(core.setFailed).toHaveBeenCalledWith(
+      'At least one of create_alert or create_incident_flag must be true.'
+    )
+  })
+
+  it('Creates alert only when create_incident_flag is false', async () => {
+    // Set up input mocks with incident creation disabled
+    core.getInput
+      .mockReturnValueOnce('critical') // severity
+      .mockReturnValueOnce('Test Incident') // title
+      .mockReturnValueOnce('This is a test incident.') // details
+      .mockReturnValueOnce('Service1') // alert_service
+      .mockReturnValueOnce('High') // alert_urgency
+      .mockReturnValueOnce('ext-123') // external_id
+      .mockReturnValueOnce('https://example.com/alert') // external_url
+      .mockReturnValueOnce('Service1') // services
+      .mockReturnValueOnce('Team1') // teams
+      .mockReturnValueOnce('Group1') // alert_groups
+      .mockReturnValueOnce('Environment1') // environments
+      .mockReturnValueOnce('IncidentType1') // incident_types
+      .mockReturnValueOnce('true') // create_alert
+      .mockReturnValueOnce('false') // create_incident_flag
+      .mockReturnValueOnce('false') // create_public_incident
+      .mockReturnValueOnce('test-api-key') // api_key
+
+    // Import and run the main function
+    const { run } = await import('../src/main.js')
+    await run()
+
+    // Verify alert was created
+    expect(createAlertMock).toHaveBeenCalledWith(
+      'test-api-key',
+      'Test Incident',
+      'This is a test incident.',
+      'service-123',
+      'urgency-123',
+      'ext-123',
+      'https://example.com/alert',
+      ['service-123'],
+      ['group-123'],
+      ['env-123']
+    )
+
+    // Verify incident was NOT created
+    expect(createIncidentMock).not.toHaveBeenCalled()
+
+    // Verify severity and incident type lookups were NOT called since no incident
+    expect(getSeverityIdMock).not.toHaveBeenCalled()
+    expect(getIncidentTypeIdMock).not.toHaveBeenCalled()
+    expect(getTeamIdMock).not.toHaveBeenCalled()
+
+    // Verify outputs were set
+    expect(core.setOutput).toHaveBeenCalledWith('incident-id', '')
+    expect(core.setOutput).toHaveBeenCalledWith('alert-id', 'alert-123')
+  })
+
+  it('Handles empty alert service when create_alert is true', async () => {
+    // Set up input mocks with empty alert service
+    core.getInput
+      .mockReturnValueOnce('critical') // severity
+      .mockReturnValueOnce('Test Incident') // title
+      .mockReturnValueOnce('This is a test incident.') // details
+      .mockReturnValueOnce('') // alert_service (empty)
+      .mockReturnValueOnce('High') // alert_urgency
+      .mockReturnValueOnce('ext-123') // external_id
+      .mockReturnValueOnce('https://example.com/alert') // external_url
+      .mockReturnValueOnce('Service1') // services
+      .mockReturnValueOnce('Team1') // teams
+      .mockReturnValueOnce('Group1') // alert_groups
+      .mockReturnValueOnce('Environment1') // environments
+      .mockReturnValueOnce('IncidentType1') // incident_types
+      .mockReturnValueOnce('true') // create_alert
+      .mockReturnValueOnce('false') // create_incident_flag
+      .mockReturnValueOnce('false') // create_public_incident
+      .mockReturnValueOnce('test-api-key') // api_key
+
+    // Import and run the main function
+    const { run } = await import('../src/main.js')
+    await run()
+
+    // Verify alert was created with empty service ID
+    expect(createAlertMock).toHaveBeenCalledWith(
+      'test-api-key',
+      'Test Incident',
+      'This is a test incident.',
+      '', // empty alertSvcId
+      'urgency-123',
+      'ext-123',
+      'https://example.com/alert',
+      ['service-123'],
+      ['group-123'],
+      ['env-123']
+    )
+
+    // Verify getServiceId was called only once for the services list, not for alert service
+    expect(getServiceIdMock).toHaveBeenCalledTimes(1)
+    expect(getServiceIdMock).toHaveBeenCalledWith('Service1', 'test-api-key')
   })
 
   it('Retrieves alert service ID when createAlertFlag is true and alertSvc is provided', async () => {
@@ -459,6 +590,7 @@ describe('main.ts', () => {
       .mockReturnValueOnce('Environment1') // environments
       .mockReturnValueOnce('IncidentType1') // incident_types
       .mockReturnValueOnce('false') // create_alert
+      .mockReturnValueOnce('true') // create_incident
       .mockReturnValueOnce('false') // create_public_incident
       .mockReturnValueOnce('test-api-key') // api_key
 
@@ -488,6 +620,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('Environment1,Environment2') // environments
         .mockReturnValueOnce('IncidentType1,IncidentType2') // incident-types
         .mockReturnValueOnce('true') // create-alert
+        .mockReturnValueOnce('true') // create-incident
         .mockReturnValueOnce('false') // create-public-incident
         .mockReturnValueOnce('test-api-key') // api key
 
@@ -503,6 +636,7 @@ describe('main.ts', () => {
       expect(core.debug).toHaveBeenCalledWith('Severity: critical')
       expect(core.debug).toHaveBeenCalledWith('Service: Service1,Service2')
       expect(core.debug).toHaveBeenCalledWith('Create Alert: true')
+      expect(core.debug).toHaveBeenCalledWith('Create Incident: true')
       expect(core.debug).toHaveBeenCalledWith('Alert Service: Service1')
       expect(core.debug).toHaveBeenCalledWith('Alert Urgency: High')
       expect(core.debug).toHaveBeenCalledWith('Alert External ID: ext-123')
