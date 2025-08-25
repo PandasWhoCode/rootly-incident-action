@@ -6,18 +6,28 @@
 [![CodeQL](https://github.com/pandaswhocode/rootly-incident-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/pandaswhocode/rootly-incident-action/actions/workflows/codeql-analysis.yml)
 [![Coverage](./badges/coverage.svg)](./badges/coverage.svg)
 
-A GitHub Action for creating comprehensive incidents in Rootly using the full Rootly REST API. This action integrates seamlessly with your CI/CD workflows to automatically create detailed incidents with complete metadata when issues are detected.
+A GitHub Action for creating comprehensive incidents in Rootly using the full
+Rootly REST API. This action integrates seamlessly with your CI/CD workflows to
+automatically create detailed incidents with complete metadata when issues are
+detected.
 
 ## Features
 
-- **Comprehensive Incident Creation**: Create detailed incidents using the complete Rootly REST API
-- **Full Metadata Support**: Configure services, teams, environments, functionalities, causes, and incident types
-- **Advanced Incident Options**: Support for incident kinds, parent/child relationships, and duplicate marking
-- **Integration Ready**: Built-in support for Slack channels, Google Drive, and email notifications
-- **Flexible Labeling**: Custom key-value labels for enhanced incident categorization
+- **Comprehensive Incident Creation**: Create detailed incidents using the
+  complete Rootly REST API
+- **Full Metadata Support**: Configure services, teams, environments,
+  functionalities, causes, and incident types
+- **Advanced Incident Options**: Support for incident kinds, parent/child
+  relationships, and duplicate marking
+- **Integration Ready**: Built-in support for Slack channels, Google Drive, and
+  email notifications
+- **Flexible Labeling**: Custom key-value labels for enhanced incident
+  categorization
 - **Robust Error Handling**: Comprehensive error handling with detailed logging
-- **100% Test Coverage**: Complete test suite with perfect coverage across all metrics
-- **TypeScript Excellence**: Built with TypeScript for type safety and reliability
+- **100% Test Coverage**: Complete test suite with perfect coverage across all
+  metrics
+- **TypeScript Excellence**: Built with TypeScript for type safety and
+  reliability
 
 ## Initial Setup
 
@@ -62,7 +72,10 @@ This will run formatting, linting, testing, coverage reporting, and bundling.
 
 ## About the Rootly Incident Action
 
-This GitHub Action creates comprehensive incidents in Rootly using the complete Rootly REST API. The action supports all incident creation parameters available in the Rootly platform, enabling you to create detailed incidents with full metadata integration.
+This GitHub Action creates comprehensive incidents in Rootly using the complete
+Rootly REST API. The action supports all incident creation parameters available
+in the Rootly platform, enabling you to create detailed incidents with full
+metadata integration.
 
 **Required parameters:**
 
@@ -72,7 +85,8 @@ This GitHub Action creates comprehensive incidents in Rootly using the complete 
 
 **Key optional parameters:**
 
-- `kind` - Incident type (test, test_sub, example, example_sub, normal, normal_sub, backfilled, scheduled, etc.)
+- `kind` - Incident type (test, test_sub, example, example_sub, normal,
+  normal_sub, backfilled, scheduled, etc.)
 - `summary` - Detailed incident description
 - `services` - Comma-separated service names
 - `teams` - Comma-separated team names
@@ -89,7 +103,8 @@ This GitHub Action creates comprehensive incidents in Rootly using the complete 
 - `notify_emails` - Email addresses to notify
 - `parent_incident_id` - For creating child incidents
 - `duplicate_incident_id` - For marking incidents as duplicates
-- `create_public_incident` - Whether to create a public incident (defaults to false)
+- `create_public_incident` - Whether to create a public incident (defaults to
+  false)
 
 **Output:**
 
@@ -129,7 +144,8 @@ jobs:
         uses: pandaswhocode/rootly-incident-action@v1
         with:
           title: 'Production Service Outage'
-          summary: 'Critical service experiencing downtime in production environment'
+          summary:
+            'Critical service experiencing downtime in production environment'
           severity: ${{ inputs.severity }}
           kind: 'normal'
           services: 'web-api,database'
@@ -166,7 +182,9 @@ jobs:
         uses: pandaswhocode/rootly-incident-action@v1
         with:
           title: 'Database Performance Degradation'
-          summary: 'Database queries are experiencing significant latency increases affecting user experience'
+          summary:
+            'Database queries are experiencing significant latency increases
+            affecting user experience'
           severity: 'Sev2'
           kind: 'normal'
           services: 'database,api-gateway,user-service'
@@ -216,7 +234,9 @@ jobs:
         uses: pandaswhocode/rootly-incident-action@v1
         with:
           title: 'Test Suite Failure in ${{ github.repository }}'
-          summary: 'Automated test suite failed on ${{ github.ref_name }} branch - immediate investigation required'
+          summary:
+            'Automated test suite failed on ${{ github.ref_name }} branch -
+            immediate investigation required'
           severity: 'Sev2'
           kind: 'normal'
           services: 'ci-cd,build-system'
@@ -225,7 +245,9 @@ jobs:
           functionalities: 'automated-testing,continuous-integration'
           incident_types: 'build-failure'
           causes: 'code-change,test-environment'
-          labels: 'source:github-actions,branch:${{ github.ref_name }},run:${{ github.run_id }}'
+          labels:
+            'source:github-actions,branch:${{ github.ref_name }},run:${{
+            github.run_id }}'
           user_email: 'ci-cd@company.com'
           slack_channel_name: 'build-failures'
           notify_emails: 'engineering-oncall@company.com'
@@ -263,7 +285,8 @@ jobs:
           alert_ids: ${{ github.event.client_payload.alert_ids }}
           slack_channel_name: ${{ github.event.client_payload.slack_channel }}
           notify_emails: ${{ github.event.client_payload.notify_emails }}
-          create_public_incident: ${{ github.event.client_payload.create_public_incident || 'false' }}
+          create_public_incident:
+            ${{ github.event.client_payload.create_public_incident || 'false' }}
           api_key: ${{ secrets.ROOTLY_API_KEY }}
 ```
 
@@ -272,7 +295,7 @@ jobs:
 ### Input Parameters
 
 | Parameter                | Required | Default                   | Description                                                    |
-|--------------------------|----------|---------------------------|----------------------------------------------------------------|
+| ------------------------ | -------- | ------------------------- | -------------------------------------------------------------- |
 | `api_key`                | x        | -                         | Rootly API authentication token                                |
 | `title`                  | x        | `My Incident Title`       | The title of the incident                                      |
 | `severity`               | x        | `Sev0`                    | The severity of the incident                                   |
@@ -300,7 +323,7 @@ jobs:
 ### Output Parameters
 
 | Parameter     | Description                                  |
-|---------------|----------------------------------------------|
+| ------------- | -------------------------------------------- |
 | `incident-id` | The ID of the created incident for API usage |
 
 ## API Integration
@@ -321,9 +344,13 @@ This action integrates comprehensively with the Rootly REST API to:
 - **Configure integrations** for Slack channels and Google Drive
 - **Set up notifications** for specified email addresses
 
-The action uses the complete Rootly incident creation API endpoint (`POST /v1/incidents`) with full support for all available incident attributes including advanced features like parent/child relationships, duplicate marking, and public/private visibility.
+The action uses the complete Rootly incident creation API endpoint
+(`POST /v1/incidents`) with full support for all available incident attributes
+including advanced features like parent/child relationships, duplicate marking,
+and public/private visibility.
 
-All API calls include comprehensive error handling with detailed logging for debugging purposes.
+All API calls include comprehensive error handling with detailed logging for
+debugging purposes.
 
 ## Development
 
@@ -353,7 +380,8 @@ All API calls include comprehensive error handling with detailed logging for deb
 
 ### Available Scripts
 
-- `npm run all` - Run the complete pipeline (format, lint, test, coverage, bundle)
+- `npm run all` - Run the complete pipeline (format, lint, test, coverage,
+  bundle)
 - `npm test` - Run Jest unit tests
 - `npm run lint` - Run ESLint
 - `npm run format` - Run Prettier formatting
@@ -362,15 +390,23 @@ All API calls include comprehensive error handling with detailed logging for deb
 
 ### Testing
 
-The project maintains **100% test coverage** across all metrics with comprehensive unit tests covering:
+The project maintains **100% test coverage** across all metrics with
+comprehensive unit tests covering:
 
-- **Complete API Integration**: All service, team, environment, severity, incident type, functionality, cause, and user resolution functions
-- **Incident Creation**: Full incident creation workflow with all parameter combinations
-- **Error Scenarios**: HTTP errors, network failures, JSON parsing errors, and API response validation
-- **Input Validation**: Edge cases, empty inputs, malformed data, and boundary conditions
-- **Main Workflow**: Complete orchestration from input parsing to incident creation
-- **Utility Functions**: Array operations, label parsing, and data transformation
-- **Mock Isolation**: Proper Jest ESM module mocking with isolated test environments
+- **Complete API Integration**: All service, team, environment, severity,
+  incident type, functionality, cause, and user resolution functions
+- **Incident Creation**: Full incident creation workflow with all parameter
+  combinations
+- **Error Scenarios**: HTTP errors, network failures, JSON parsing errors, and
+  API response validation
+- **Input Validation**: Edge cases, empty inputs, malformed data, and boundary
+  conditions
+- **Main Workflow**: Complete orchestration from input parsing to incident
+  creation
+- **Utility Functions**: Array operations, label parsing, and data
+  transformation
+- **Mock Isolation**: Proper Jest ESM module mocking with isolated test
+  environments
 - **Branch Coverage**: All conditional paths and error handling branches
 
 ## Contributing
@@ -399,9 +435,12 @@ This project is licensed under the Apache-2.0 License - see the
 ## Support
 
 - **Documentation**: Check this readme and [CONTRIBUTING.md](./CONTRIBUTING.md)
-- **Issues**: Report bugs via [GitHub Issues](https://github.com/pandaswhocode/rootly-incident-action/issues)
-- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/pandaswhocode/rootly-incident-action/discussions)
+- **Issues**: Report bugs via
+  [GitHub Issues](https://github.com/pandaswhocode/rootly-incident-action/issues)
+- **Discussions**: Ask questions in
+  [GitHub Discussions](https://github.com/pandaswhocode/rootly-incident-action/discussions)
 
 ## Changelog
 
-The release notes will be automatically generated when a new version is released.
+The release notes will be automatically generated when a new version is
+released.
