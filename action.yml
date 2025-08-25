@@ -35,13 +35,11 @@ inputs:
   summary:
     description: The summary of the incident.
     required: false
-    default: 'My Incident Summary'
   user_email:
     description: The email of the user to attach to the incident.
   severity:
     description: The severity of the incident.
     required: true
-    default: 'Sev0'
   alert_ids:
     description: Comma-separated list of alert IDs to link to the incident.
     required: false
@@ -49,7 +47,6 @@ inputs:
     description:
       The comma-separated names of the environments to create the incident for.
     required: false
-    default: 'production'
   incident_types:
     description:
       The comma-separated names of the incident types to create the incident
@@ -59,28 +56,23 @@ inputs:
     description:
       The comma-separated names of the services to create the incident for.
     required: false
-    default: 'my-rootly-service'
   functionalities:
     description:
       The comma-separated names of the functionalities to create the incident
       for.
     required: false
-    default: 'my-rootly-functionality'
   teams:
     description:
       The comma-separated names of the teams to create the incident for.
     required: false
-    default: 'my-rootly-team'
   causes:
     description:
       The comma-separated names of the causes to create the incident for.
     required: false
-    default: 'my-rootly-cause'
   labels:
     description:
       A comma-separated list of key:value pairs to create the alert for.
     required: false
-    default: 'my-rootly-label'
   slack_channel_name:
     description: The name of the Slack channel to post updates to.
     required: false
