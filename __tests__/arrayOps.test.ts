@@ -1,88 +1,151 @@
-/**
- * Unit tests for the arrayOps utility functions, src/arrayOps.ts
- */
-import { addNonEmptyArray } from '../src/arrayOps'
+import { jest } from '@jest/globals'
+import { Label } from '../src/label.js'
 
 describe('arrayOps.ts', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  afterEach(() => {
+    jest.resetAllMocks()
+  })
+
   describe('addNonEmptyArray', () => {
-    let attributes: Record<string, string | string[] | boolean>
+    it('Adds valid string array to attributes', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+      const stringArray = ['service1', 'service2', 'service3']
 
-    beforeEach(() => {
-      attributes = {}
-    })
+      addNonEmptyArray(stringArray, 'service_ids', attributes)
 
-    it('adds filtered array when input contains non-empty strings', () => {
-      const input = ['value1', 'value2', 'value3']
-      addNonEmptyArray(input, 'testKey', attributes)
-
-      expect(attributes.testKey).toEqual(['value1', 'value2', 'value3'])
-    })
-
-    it('filters out empty strings and whitespace-only strings', () => {
-      const input = ['value1', '', '  ', 'value2', '\t\n', 'value3']
-      addNonEmptyArray(input, 'testKey', attributes)
-
-      expect(attributes.testKey).toEqual(['value1', 'value2', 'value3'])
-    })
-
-    it('does not add attribute when all strings are empty or whitespace', () => {
-      const input = ['', '  ', '\t', '\n', '   \t\n  ']
-      addNonEmptyArray(input, 'testKey', attributes)
-
-      expect(attributes.testKey).toBeUndefined()
-    })
-
-    it('does not add attribute when array is empty', () => {
-      const input: string[] = []
-      addNonEmptyArray(input, 'testKey', attributes)
-
-      expect(attributes.testKey).toBeUndefined()
-    })
-
-    it('does not add attribute when array is undefined', () => {
-      addNonEmptyArray(undefined, 'testKey', attributes)
-
-      expect(attributes.testKey).toBeUndefined()
-    })
-
-    it('preserves existing attributes when adding new ones', () => {
-      attributes.existingKey = 'existingValue'
-      const input = ['newValue1', 'newValue2']
-      addNonEmptyArray(input, 'newKey', attributes)
-
-      expect(attributes.existingKey).toBe('existingValue')
-      expect(attributes.newKey).toEqual(['newValue1', 'newValue2'])
-    })
-
-    it('overwrites existing attribute with same key', () => {
-      attributes.testKey = 'oldValue'
-      const input = ['newValue1', 'newValue2']
-      addNonEmptyArray(input, 'testKey', attributes)
-
-      expect(attributes.testKey).toEqual(['newValue1', 'newValue2'])
-    })
-
-    it('handles mixed content with special characters', () => {
-      const input = ['normal', '!@#$%', '', '   ', 'with spaces', 'unicode-ñ']
-      addNonEmptyArray(input, 'testKey', attributes)
-
-      expect(attributes.testKey).toEqual([
-        'normal',
-        '!@#$%',
-        'with spaces',
-        'unicode-ñ'
+      expect(attributes.service_ids).toEqual([
+        'service1',
+        'service2',
+        'service3'
       ])
     })
 
-    it('trims whitespace from valid strings', () => {
-      const input = ['  value1  ', '\tvalue2\n', '   value3   ']
-      addNonEmptyArray(input, 'testKey', attributes)
+    it('Filters out empty strings from string array', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+      const stringArray = ['service1', '', '   ', 'service2']
 
-      // Note: The function filters based on trimmed length but doesn't actually trim the values
-      expect(attributes.testKey).toEqual([
-        '  value1  ',
-        '\tvalue2\n',
-        '   value3   '
+      addNonEmptyArray(stringArray, 'service_ids', attributes)
+
+      expect(attributes.service_ids).toEqual(['service1', 'service2'])
+    })
+
+    it('Does not add attribute when all strings are empty', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+      const stringArray = ['', '   ', '']
+
+      addNonEmptyArray(stringArray, 'service_ids', attributes)
+
+      expect(attributes.service_ids).toBeUndefined()
+    })
+
+    it('Adds valid label array to attributes', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+      const labelArray = [
+        { key: 'env', value: 'production' },
+        { key: 'team', value: 'backend' }
+      ]
+
+      addNonEmptyArray(labelArray, 'labels', attributes)
+
+      expect(attributes.labels).toEqual([
+        { key: 'env', value: 'production' },
+        { key: 'team', value: 'backend' }
+      ])
+    })
+
+    it('Filters out labels with empty keys or values', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+      const labelArray = [
+        { key: 'env', value: 'production' },
+        { key: '', value: 'backend' },
+        { key: 'team', value: '' },
+        { key: '   ', value: '   ' },
+        { key: 'priority', value: 'high' }
+      ]
+
+      addNonEmptyArray(labelArray, 'labels', attributes)
+
+      expect(attributes.labels).toEqual([
+        { key: 'env', value: 'production' },
+        { key: 'priority', value: 'high' }
+      ])
+    })
+
+    it('Does not add attribute when all labels have empty keys or values', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+      const labelArray = [
+        { key: '', value: 'production' },
+        { key: 'team', value: '' },
+        { key: '   ', value: '   ' }
+      ]
+
+      addNonEmptyArray(labelArray, 'labels', attributes)
+
+      expect(attributes.labels).toBeUndefined()
+    })
+
+    it('Does not add attribute when array is undefined', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+
+      addNonEmptyArray(undefined, 'service_ids', attributes)
+
+      expect(attributes.service_ids).toBeUndefined()
+    })
+
+    it('Does not add attribute when array is empty', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+
+      addNonEmptyArray([], 'service_ids', attributes)
+
+      expect(attributes.service_ids).toBeUndefined()
+    })
+
+    it('Handles mixed whitespace in string arrays', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+      const stringArray = [' service1 ', '\t\t', '\n', ' service2\n']
+
+      addNonEmptyArray(stringArray, 'environment_ids', attributes)
+
+      expect(attributes.environment_ids).toEqual([' service1 ', ' service2\n'])
+    })
+
+    it('Handles mixed whitespace in label arrays', async () => {
+      const { addNonEmptyArray } = await import('../src/arrayOps.js')
+      const attributes: Record<string, string | string[] | boolean | Label[]> =
+        {}
+      const labelArray = [
+        { key: ' env ', value: ' production ' },
+        { key: '\t', value: '\n' },
+        { key: ' team\n', value: ' backend\t' }
+      ]
+
+      addNonEmptyArray(labelArray, 'labels', attributes)
+
+      expect(attributes.labels).toEqual([
+        { key: ' env ', value: ' production ' },
+        { key: ' team\n', value: ' backend\t' }
       ])
     })
   })

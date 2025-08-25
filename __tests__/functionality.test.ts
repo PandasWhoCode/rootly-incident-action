@@ -8,7 +8,7 @@ global.fetch = mockFetch
 const mockConsoleError = jest.fn()
 global.console.error = mockConsoleError
 
-describe('incidentType.ts', () => {
+describe('functionality.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -17,42 +17,45 @@ describe('incidentType.ts', () => {
     jest.resetAllMocks()
   })
 
-  it('Returns incident type ID when API call is successful', async () => {
+  it('Returns functionality ID when API call is successful', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'incident-type-123' }]
+        data: [{ id: 'func-123' }]
       })
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    const result = await getIncidentTypeId('outage', 'test-api-key')
+    const { getFunctionalityId } = await import('../src/functionality.js')
+    const result = await getFunctionalityId(
+      'user_authentication',
+      'test-api-key'
+    )
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/incident_types?filter%5Bname%5D=outage',
+      'https://api.rootly.com/v1/functionalities?include=user_authentication',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer test-api-key' }
       }
     )
-    expect(result).toBe('incident-type-123')
+    expect(result).toBe('func-123')
   })
 
-  it('Encodes incident type name in URL', async () => {
+  it('Encodes functionality name in URL', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'incident-type-456' }]
+        data: [{ id: 'func-456' }]
       })
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    await getIncidentTypeId('security & breach', 'test-api-key')
+    const { getFunctionalityId } = await import('../src/functionality.js')
+    await getFunctionalityId('payment & billing', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/incident_types?filter%5Bname%5D=security%20%26%20breach',
+      'https://api.rootly.com/v1/functionalities?include=payment%20%26%20billing',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer test-api-key' }
@@ -68,8 +71,8 @@ describe('incidentType.ts', () => {
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    const result = await getIncidentTypeId('nonexistent_type', 'test-api-key')
+    const { getFunctionalityId } = await import('../src/functionality.js')
+    const result = await getFunctionalityId('nonexistent_func', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(
       new Error('HTTP error! status: 404 Not Found')
@@ -84,8 +87,8 @@ describe('incidentType.ts', () => {
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    const result = await getIncidentTypeId('test_type', 'test-api-key')
+    const { getFunctionalityId } = await import('../src/functionality.js')
+    const result = await getFunctionalityId('test_func', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(new Error('Invalid JSON'))
     expect(result).toBe('')
@@ -95,8 +98,8 @@ describe('incidentType.ts', () => {
     const networkError = new Error('Network error')
     mockFetch.mockRejectedValue(networkError)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    const result = await getIncidentTypeId('test_type', 'test-api-key')
+    const { getFunctionalityId } = await import('../src/functionality.js')
+    const result = await getFunctionalityId('test_func', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(networkError)
     expect(result).toBe('')

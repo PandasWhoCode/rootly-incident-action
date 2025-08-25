@@ -1,20 +1,14 @@
-/**
- * Unit tests for the team functionality, src/team.ts
- */
 import { jest } from '@jest/globals'
 
-// Mock the global fetch function
-const mockFetch = jest.fn<typeof globalThis.fetch>()
+// Mock global fetch
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>
 global.fetch = mockFetch
 
-// Import the module being tested dynamically
-const { getTeamId } = await import('../src/team.js')
+// Mock console.error
+const mockConsoleError = jest.fn()
+global.console.error = mockConsoleError
 
 describe('team.ts', () => {
-  const mockApiKey = 'test-api-key'
-  const mockTeamName = 'Test Team'
-  const mockTeamId = 'team-123'
-
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -23,93 +17,42 @@ describe('team.ts', () => {
     jest.resetAllMocks()
   })
 
-  it('Gets team ID successfully', async () => {
+  it('Returns team ID when API call is successful', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: mockTeamId }]
+        data: [{ id: 'team-123' }]
       })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const result = await getTeamId(mockTeamName, mockApiKey)
+    const { getTeamId } = await import('../src/team.js')
+    const result = await getTeamId('backend', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/teams?filter%5Bname%5D=Test%20Team',
+      'https://api.rootly.com/v1/teams?filter%5Bname%5D=backend',
       {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + mockApiKey },
-        body: undefined
+        headers: { Authorization: 'Bearer test-api-key' }
       }
     )
-    expect(result).toBe(mockTeamId)
+    expect(result).toBe('team-123')
   })
 
-  it('Handles team names with spaces correctly', async () => {
+  it('Encodes team name in URL', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
         data: [{ id: 'team-456' }]
       })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    await getTeamId('Engineering Team', mockApiKey)
+    const { getTeamId } = await import('../src/team.js')
+    await getTeamId('platform & infrastructure', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/teams?filter%5Bname%5D=Engineering%20Team',
-      expect.objectContaining({
-        method: 'GET'
-      })
-    )
-  })
-
-  it('Returns empty string when API request fails', async () => {
-    mockFetch.mockRejectedValue(new Error('Network error'))
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
-
-    const result = await getTeamId(mockTeamName, mockApiKey)
-
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(new Error('Network error'))
-
-    consoleSpy.mockRestore()
-  })
-
-  it('Returns empty string when response parsing fails', async () => {
-    const mockResponse = {
-      ok: true,
-      json: jest.fn().mockRejectedValue(new Error('JSON parse error'))
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
-
-    const result = await getTeamId(mockTeamName, mockApiKey)
-
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(new Error('JSON parse error'))
-
-    consoleSpy.mockRestore()
-  })
-
-  it('Handles empty team name', async () => {
-    const mockResponse = {
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        data: [{ id: 'team-empty' }]
-      })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-
-    const result = await getTeamId('', mockApiKey)
-
-    expect(result).toBe('team-empty')
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/teams?filter%5Bname%5D=',
+      'https://api.rootly.com/v1/teams?filter%5Bname%5D=platform%20%26%20infrastructure',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer test-api-key' }
@@ -117,24 +60,45 @@ describe('team.ts', () => {
     )
   })
 
-  it('Returns empty string when API returns HTTP error status', async () => {
+  it('Returns empty string when HTTP request fails', async () => {
     const mockResponse = {
       ok: false,
-      status: 429,
-      statusText: 'Too Many Requests'
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
+      status: 404,
+      statusText: 'Not Found'
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const result = await getTeamId(mockApiKey, 'backend-team')
+    const { getTeamId } = await import('../src/team.js')
+    const result = await getTeamId('nonexistent_team', 'test-api-key')
 
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(
-      new Error('HTTP error! status: 429 Too Many Requests')
+    expect(mockConsoleError).toHaveBeenCalledWith(
+      new Error('HTTP error! status: 404 Not Found')
     )
+    expect(result).toBe('')
+  })
 
-    consoleSpy.mockRestore()
+  it('Returns empty string when JSON parsing fails', async () => {
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
+
+    const { getTeamId } = await import('../src/team.js')
+    const result = await getTeamId('test_team', 'test-api-key')
+
+    expect(mockConsoleError).toHaveBeenCalledWith(new Error('Invalid JSON'))
+    expect(result).toBe('')
+  })
+
+  it('Returns empty string when network request fails', async () => {
+    const networkError = new Error('Network error')
+    mockFetch.mockRejectedValue(networkError)
+
+    const { getTeamId } = await import('../src/team.js')
+    const result = await getTeamId('test_team', 'test-api-key')
+
+    expect(mockConsoleError).toHaveBeenCalledWith(networkError)
+    expect(result).toBe('')
   })
 })

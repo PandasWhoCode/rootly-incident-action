@@ -8,7 +8,7 @@ global.fetch = mockFetch
 const mockConsoleError = jest.fn()
 global.console.error = mockConsoleError
 
-describe('incidentType.ts', () => {
+describe('cause.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -17,42 +17,42 @@ describe('incidentType.ts', () => {
     jest.resetAllMocks()
   })
 
-  it('Returns incident type ID when API call is successful', async () => {
+  it('Returns cause ID when API call is successful', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'incident-type-123' }]
+        data: [{ id: 'cause-123' }]
       })
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    const result = await getIncidentTypeId('outage', 'test-api-key')
+    const { getCauseId } = await import('../src/cause.js')
+    const result = await getCauseId('hardware_failure', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/incident_types?filter%5Bname%5D=outage',
+      'https://api.rootly.com/v1/causes?include=hardware_failure',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer test-api-key' }
       }
     )
-    expect(result).toBe('incident-type-123')
+    expect(result).toBe('cause-123')
   })
 
-  it('Encodes incident type name in URL', async () => {
+  it('Encodes cause name in URL', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'incident-type-456' }]
+        data: [{ id: 'cause-456' }]
       })
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    await getIncidentTypeId('security & breach', 'test-api-key')
+    const { getCauseId } = await import('../src/cause.js')
+    await getCauseId('software bug & error', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/incident_types?filter%5Bname%5D=security%20%26%20breach',
+      'https://api.rootly.com/v1/causes?include=software%20bug%20%26%20error',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer test-api-key' }
@@ -68,8 +68,8 @@ describe('incidentType.ts', () => {
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    const result = await getIncidentTypeId('nonexistent_type', 'test-api-key')
+    const { getCauseId } = await import('../src/cause.js')
+    const result = await getCauseId('nonexistent_cause', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(
       new Error('HTTP error! status: 404 Not Found')
@@ -84,8 +84,8 @@ describe('incidentType.ts', () => {
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    const result = await getIncidentTypeId('test_type', 'test-api-key')
+    const { getCauseId } = await import('../src/cause.js')
+    const result = await getCauseId('test_cause', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(new Error('Invalid JSON'))
     expect(result).toBe('')
@@ -95,8 +95,8 @@ describe('incidentType.ts', () => {
     const networkError = new Error('Network error')
     mockFetch.mockRejectedValue(networkError)
 
-    const { getIncidentTypeId } = await import('../src/incidentType.js')
-    const result = await getIncidentTypeId('test_type', 'test-api-key')
+    const { getCauseId } = await import('../src/cause.js')
+    const result = await getCauseId('test_cause', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(networkError)
     expect(result).toBe('')

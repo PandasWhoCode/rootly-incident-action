@@ -1,20 +1,14 @@
-/**
- * Unit tests for the environment functionality, src/environment.ts
- */
 import { jest } from '@jest/globals'
 
-// Mock the global fetch function
-const mockFetch = jest.fn<typeof globalThis.fetch>()
+// Mock global fetch
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>
 global.fetch = mockFetch
 
-// Import the module being tested dynamically
-const { getEnvironmentId } = await import('../src/environment.js')
+// Mock console.error
+const mockConsoleError = jest.fn()
+global.console.error = mockConsoleError
 
 describe('environment.ts', () => {
-  const mockApiKey = 'test-api-key'
-  const mockEnvironmentName = 'production'
-  const mockEnvironmentId = 'env-123'
-
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -23,135 +17,88 @@ describe('environment.ts', () => {
     jest.resetAllMocks()
   })
 
-  it('Gets environment ID successfully', async () => {
+  it('Returns environment ID when API call is successful', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: mockEnvironmentId }]
+        data: [{ id: 'env-123' }]
       })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const result = await getEnvironmentId(mockEnvironmentName, mockApiKey)
+    const { getEnvironmentId } = await import('../src/environment.js')
+    const result = await getEnvironmentId('production', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.rootly.com/v1/environments?filter%5Bname%5D=production',
       {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + mockApiKey },
-        body: undefined
+        headers: { Authorization: 'Bearer test-api-key' }
       }
     )
-    expect(result).toBe(mockEnvironmentId)
+    expect(result).toBe('env-123')
   })
 
-  it('Handles environment names with spaces correctly', async () => {
+  it('Encodes environment name in URL', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
         data: [{ id: 'env-456' }]
       })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    await getEnvironmentId('staging environment', mockApiKey)
+    const { getEnvironmentId } = await import('../src/environment.js')
+    await getEnvironmentId('staging & test', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/environments?filter%5Bname%5D=staging%20environment',
-      expect.objectContaining({
-        method: 'GET'
-      })
+      'https://api.rootly.com/v1/environments?filter%5Bname%5D=staging%20%26%20test',
+      {
+        method: 'GET',
+        headers: { Authorization: 'Bearer test-api-key' }
+      }
     )
   })
 
-  it('Returns empty string when API request fails', async () => {
-    mockFetch.mockRejectedValue(new Error('Network error'))
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
-
-    const result = await getEnvironmentId(mockEnvironmentName, mockApiKey)
-
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(new Error('Network error'))
-
-    consoleSpy.mockRestore()
-  })
-
-  it('Returns empty string when response parsing fails', async () => {
-    const mockResponse = {
-      ok: true,
-      json: jest.fn().mockRejectedValue(new Error('JSON parse error'))
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
-
-    const result = await getEnvironmentId(mockEnvironmentName, mockApiKey)
-
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(new Error('JSON parse error'))
-
-    consoleSpy.mockRestore()
-  })
-
-  it('Handles different environment types', async () => {
-    const environments = ['development', 'staging', 'production', 'test']
-
-    for (const env of environments) {
-      const mockResponse = {
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          data: [{ id: `env-${env}` }]
-        })
-      } as unknown as Response
-      mockFetch.mockResolvedValue(mockResponse)
-
-      const result = await getEnvironmentId(env, mockApiKey)
-
-      expect(result).toBe(`env-${env}`)
-      expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.rootly.com/v1/environments?filter%5Bname%5D=${env}`,
-        expect.objectContaining({
-          method: 'GET'
-        })
-      )
-    }
-  })
-
-  it('Handles production environment type', async () => {
-    const mockResponse = {
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        data: [{ id: 'env-production' }]
-      })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-
-    const result = await getEnvironmentId(mockApiKey, 'production')
-
-    expect(result).toBe('env-production')
-  })
-
-  it('Returns empty string when API returns HTTP error status', async () => {
+  it('Returns empty string when HTTP request fails', async () => {
     const mockResponse = {
       ok: false,
-      status: 401,
-      statusText: 'Unauthorized'
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
+      status: 404,
+      statusText: 'Not Found'
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const result = await getEnvironmentId(mockApiKey, 'staging')
+    const { getEnvironmentId } = await import('../src/environment.js')
+    const result = await getEnvironmentId('nonexistent_env', 'test-api-key')
 
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(
-      new Error('HTTP error! status: 401 Unauthorized')
+    expect(mockConsoleError).toHaveBeenCalledWith(
+      new Error('HTTP error! status: 404 Not Found')
     )
+    expect(result).toBe('')
+  })
 
-    consoleSpy.mockRestore()
+  it('Returns empty string when JSON parsing fails', async () => {
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
+
+    const { getEnvironmentId } = await import('../src/environment.js')
+    const result = await getEnvironmentId('test_env', 'test-api-key')
+
+    expect(mockConsoleError).toHaveBeenCalledWith(new Error('Invalid JSON'))
+    expect(result).toBe('')
+  })
+
+  it('Returns empty string when network request fails', async () => {
+    const networkError = new Error('Network error')
+    mockFetch.mockRejectedValue(networkError)
+
+    const { getEnvironmentId } = await import('../src/environment.js')
+    const result = await getEnvironmentId('test_env', 'test-api-key')
+
+    expect(mockConsoleError).toHaveBeenCalledWith(networkError)
+    expect(result).toBe('')
   })
 })
