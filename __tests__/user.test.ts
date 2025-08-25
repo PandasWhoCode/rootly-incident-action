@@ -13,7 +13,7 @@ jest.unstable_mockModule('@actions/core', () => ({
   warning: jest.fn()
 }))
 
-describe('service.ts', () => {
+describe('user.ts', () => {
   let mockCore: {
     warning: jest.MockedFunction<typeof import('@actions/core').warning>
   }
@@ -27,42 +27,42 @@ describe('service.ts', () => {
     jest.resetAllMocks()
   })
 
-  it('Returns service ID when API call is successful', async () => {
+  it('Returns user ID when API call is successful', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'service-123' }]
+        data: [{ id: 'user-123' }]
       })
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getServiceId } = await import('../src/service.js')
-    const result = await getServiceId('web-api', 'test-api-key')
+    const { getUserId } = await import('../src/user.js')
+    const result = await getUserId('test@example.com', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/services?filter%5Bname%5D=web-api',
+      'https://api.rootly.com/v1/users?filter%5Bemail%5D=test%40example.com',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer test-api-key' }
       }
     )
-    expect(result).toBe('service-123')
+    expect(result).toBe('user-123')
   })
 
-  it('Encodes service name in URL', async () => {
+  it('Encodes email in URL', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: 'service-456' }]
+        data: [{ id: 'user-456' }]
       })
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getServiceId } = await import('../src/service.js')
-    await getServiceId('payment & billing', 'test-api-key')
+    const { getUserId } = await import('../src/user.js')
+    await getUserId('user+test@example.com', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/services?filter%5Bname%5D=payment%20%26%20billing',
+      'https://api.rootly.com/v1/users?filter%5Bemail%5D=user%2Btest%40example.com',
       {
         method: 'GET',
         headers: { Authorization: 'Bearer test-api-key' }
@@ -70,7 +70,7 @@ describe('service.ts', () => {
     )
   })
 
-  it('Returns empty string and logs warning when service not found', async () => {
+  it('Returns empty string and logs warning when user not found', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
@@ -79,11 +79,11 @@ describe('service.ts', () => {
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getServiceId } = await import('../src/service.js')
-    const result = await getServiceId('nonexistent_service', 'test-api-key')
+    const { getUserId } = await import('../src/user.js')
+    const result = await getUserId('nonexistent@example.com', 'test-api-key')
 
     expect(mockCore.warning).toHaveBeenCalledWith(
-      "Service 'nonexistent_service' not found"
+      "User 'nonexistent@example.com' not found"
     )
     expect(result).toBe('')
   })
@@ -97,11 +97,11 @@ describe('service.ts', () => {
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getServiceId } = await import('../src/service.js')
-    const result = await getServiceId('test_service', 'test-api-key')
+    const { getUserId } = await import('../src/user.js')
+    const result = await getUserId('test@example.com', 'test-api-key')
 
     expect(mockCore.warning).toHaveBeenCalledWith(
-      "Service 'test_service' not found"
+      "User 'test@example.com' not found"
     )
     expect(result).toBe('')
   })
@@ -114,8 +114,8 @@ describe('service.ts', () => {
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getServiceId } = await import('../src/service.js')
-    const result = await getServiceId('test_service', 'test-api-key')
+    const { getUserId } = await import('../src/user.js')
+    const result = await getUserId('test@example.com', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(
       new Error('HTTP error! status: 404 Not Found')
@@ -130,8 +130,8 @@ describe('service.ts', () => {
     }
     mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const { getServiceId } = await import('../src/service.js')
-    const result = await getServiceId('test_service', 'test-api-key')
+    const { getUserId } = await import('../src/user.js')
+    const result = await getUserId('test@example.com', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(new Error('Invalid JSON'))
     expect(result).toBe('')
@@ -141,8 +141,8 @@ describe('service.ts', () => {
     const networkError = new Error('Network error')
     mockFetch.mockRejectedValue(networkError)
 
-    const { getServiceId } = await import('../src/service.js')
-    const result = await getServiceId('test_service', 'test-api-key')
+    const { getUserId } = await import('../src/user.js')
+    const result = await getUserId('test@example.com', 'test-api-key')
 
     expect(mockConsoleError).toHaveBeenCalledWith(networkError)
     expect(result).toBe('')

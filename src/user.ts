@@ -1,20 +1,20 @@
 import { ApiResponse } from './apiResponse.js'
+import * as core from '@actions/core'
 
 /**
- * Retrieve the environment ID using the Rootly REST API.
+ * Get the Usery ID using the Rootly REST API.
  *
- * @param {string} alertUrgency - The name of the alert urgency.
+ * @param {string} email - The name of the escalation policy.
  * @param {string} apiKey - The API key to use for authentication.
- * @returns {string} The ID of the environment.
+ * @returns {string} The ID of the user.
  */
-export async function getAlertUrgencyId(
-  alertUrgency: string,
+export async function getUserId(
+  email: string,
   apiKey: string
 ): Promise<string> {
-  const apiAlertUrgencyName = encodeURIComponent(alertUrgency)
+  const apiUserEmail = encodeURIComponent(email)
   const url =
-    'https://api.rootly.com/v1/alert_urgencies?filter%5Bname%5D=' +
-    apiAlertUrgencyName
+    'https://api.rootly.com/v1/users?filter%5Bemail%5D=' + apiUserEmail
   const options = {
     method: 'GET',
     headers: { Authorization: `Bearer ${apiKey}` }
@@ -22,14 +22,18 @@ export async function getAlertUrgencyId(
 
   try {
     const response = await fetch(url, options)
-
     if (!response.ok) {
       throw new Error(
         `HTTP error! status: ${response.status} ${response.statusText}`
       )
     }
-
     const data = (await response.json()) as ApiResponse
+
+    if (!data.data || data.data.length === 0) {
+      core.warning(`User '${email}' not found`)
+      return ''
+    }
+
     return data.data[0].id
   } catch (error) {
     console.error(error)

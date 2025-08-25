@@ -9,77 +9,102 @@ branding:
 
 # Define your inputs here.
 inputs:
-  services:
-    description:
-      The comma-separated names of the services to create the incident for.
+  api_key:
+    description: The API token to use for authentication with Rootly.
     required: true
-    default: 'my-rootly-service'
-  teams:
-    description:
-      The comma-separated names of the teams to create the incident for.
+  title:
+    description: The title of the incident.
     required: true
-    default: 'my-rootly-group'
-  alert_groups:
+    default: 'My Incident Title'
+  kind:
     description:
-      The comma-separated names of the alert groups to create the alert for.
+      The kind of incident to create. One of 'test', 'test_sub', 'example',
+      'example_sub', 'normal', 'normal_sub', 'backfilled', 'scheduled'.
     required: false
-  alert_service:
-    description: The name of the service the alert shall target.
+    default: 'normal'
+  parent_incident_id:
+    description: The ID of the parent incident, if any.
     required: false
-  alert_urgency:
-    description: The urgency of the alert to create.
+  duplicate_inicident_id:
+    description: The ID of the incident to mark as duplicate, if any.
     required: false
-    default: 'high'
-  alert_external_id:
-    description: An external ID to associate with the alert.
-    required: false
-  alert_external_url:
-    description: An external URL to associate with the alert.
-    required: false
-  create_alert:
-    description: Whether to create an alert for the incident.
-    required: false
-    default: 'true'
-  create_incident:
-    description: Whether to create an incident.
-    required: false
-    default: 'true'
   create_public_incident:
     description: Set to true to create a public incident.
     required: false
     default: 'false'
+  summary:
+    description: The summary of the incident.
+    required: false
+    default: 'My Incident Summary'
+  user_email:
+    description: The email of the user to attach to the incident.
+  severity:
+    description: The severity of the incident.
+    required: true
+    default: 'Sev0'
+  alert_ids:
+    description: Comma-separated list of alert IDs to link to the incident.
+    required: false
   environments:
     description:
       The comma-separated names of the environments to create the incident for.
-    required: true
+    required: false
     default: 'production'
   incident_types:
     description:
       The comma-separated names of the incident types to create the incident
       for.
     required: false
-  title:
-    description: The title of the incident.
-    required: true
-    default: 'My Incident Title'
-  summary:
-    description: The description of the incident.
+  services:
+    description:
+      The comma-separated names of the services to create the incident for.
     required: false
-    default: 'My Incident Description'
-  severity:
-    description: The severity of the incident.
-    required: true
-    default: 'Sev0'
-  api_key:
-    description: The API token to use for authentication with Rootly.
-    required: true
+    default: 'my-rootly-service'
+  functionalities:
+    description:
+      The comma-separated names of the functionalities to create the incident
+      for.
+    required: false
+    default: 'my-rootly-functionality'
+  teams:
+    description:
+      The comma-separated names of the teams to create the incident for.
+    required: false
+    default: 'my-rootly-team'
+  causes:
+    description:
+      The comma-separated names of the causes to create the incident for.
+    required: false
+    default: 'my-rootly-cause'
+  labels:
+    description:
+      A comma-separated list of key:value pairs to create the alert for.
+    required: false
+    default: 'my-rootly-label'
+  slack_channel_name:
+    description: The name of the Slack channel to post updates to.
+    required: false
+  slack_channel_id:
+    description: The ID of the Slack channel to post updates to.
+    required: false
+  slack_channel_url:
+    description: The URL of the Slack channel to post updates to.
+    required: false
+  google_drive_parent_id:
+    description: The Google Drive parent ID to create the incident document in.
+    required: false
+  google_drive_url:
+    description: The URL of the Google Drive document for the incident.
+    required: false
+  notify_emails:
+    description:
+      Comma-separated list of email addresses to notify about the incident.
+    required: false
 
 # Define your outputs here.
 outputs:
   incident-id:
     description: The ID of the created incident for API usage.
-  alert-id:
-    description: The ID of the created alert for API usage.
 
 runs:
   using: node24

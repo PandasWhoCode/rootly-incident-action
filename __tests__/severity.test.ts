@@ -1,20 +1,14 @@
-/**
- * Unit tests for the severity functionality, src/severity.ts
- */
 import { jest } from '@jest/globals'
 
-// Mock the global fetch function
-const mockFetch = jest.fn<typeof globalThis.fetch>()
+// Mock global fetch
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>
 global.fetch = mockFetch
 
-// Import the module being tested dynamically
-const { getSeverityId } = await import('../src/severity.js')
+// Mock console.error
+const mockConsoleError = jest.fn()
+global.console.error = mockConsoleError
 
 describe('severity.ts', () => {
-  const mockApiKey = 'test-api-key'
-  const mockSeverityName = 'critical'
-  const mockSeverityId = 'severity-123'
-
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -23,135 +17,88 @@ describe('severity.ts', () => {
     jest.resetAllMocks()
   })
 
-  it('Gets severity ID successfully', async () => {
+  it('Returns severity ID when API call is successful', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
-        data: [{ id: mockSeverityId }]
+        data: [{ id: 'severity-123' }]
       })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const result = await getSeverityId(mockSeverityName, mockApiKey)
+    const { getSeverityId } = await import('../src/severity.js')
+    const result = await getSeverityId('critical', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.rootly.com/v1/severities?filter%5Bname%5D=critical',
       {
         method: 'GET',
-        headers: { Authorization: 'Bearer ' + mockApiKey },
-        body: undefined
+        headers: { Authorization: 'Bearer test-api-key' }
       }
     )
-    expect(result).toBe(mockSeverityId)
+    expect(result).toBe('severity-123')
   })
 
-  it('Handles severity names with spaces correctly', async () => {
+  it('Encodes severity name in URL', async () => {
     const mockResponse = {
       ok: true,
       json: jest.fn().mockResolvedValue({
         data: [{ id: 'severity-456' }]
       })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    await getSeverityId('high priority', mockApiKey)
+    const { getSeverityId } = await import('../src/severity.js')
+    await getSeverityId('high & urgent', 'test-api-key')
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.rootly.com/v1/severities?filter%5Bname%5D=high%20priority',
-      expect.objectContaining({
-        method: 'GET'
-      })
+      'https://api.rootly.com/v1/severities?filter%5Bname%5D=high%20%26%20urgent',
+      {
+        method: 'GET',
+        headers: { Authorization: 'Bearer test-api-key' }
+      }
     )
   })
 
-  it('Returns empty string when API request fails', async () => {
-    mockFetch.mockRejectedValue(new Error('Network error'))
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
-
-    const result = await getSeverityId('critical', mockApiKey)
-
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(new Error('Network error'))
-
-    consoleSpy.mockRestore()
-  })
-
-  it('Returns empty string when response parsing fails', async () => {
-    const mockResponse = {
-      ok: true,
-      json: jest.fn().mockRejectedValue(new Error('JSON parse error'))
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
-
-    const result = await getSeverityId('critical', mockApiKey)
-
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(new Error('JSON parse error'))
-
-    consoleSpy.mockRestore()
-  })
-
-  it('Handles different severity levels', async () => {
-    const severityLevels = ['low', 'medium', 'high', 'critical']
-
-    for (const severity of severityLevels) {
-      const mockResponse = {
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          data: [{ id: `severity-${severity}` }]
-        })
-      } as unknown as Response
-      mockFetch.mockResolvedValue(mockResponse)
-
-      const result = await getSeverityId(severity, mockApiKey)
-
-      expect(result).toBe(`severity-${severity}`)
-      expect(mockFetch).toHaveBeenCalledWith(
-        `https://api.rootly.com/v1/severities?filter%5Bname%5D=${severity}`,
-        expect.objectContaining({
-          method: 'GET'
-        })
-      )
-    }
-  })
-
-  it('Handles critical severity level', async () => {
-    const mockResponse = {
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        data: [{ id: 'severity-critical' }]
-      })
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-
-    const result = await getSeverityId(mockApiKey, 'critical')
-
-    expect(result).toBe('severity-critical')
-  })
-
-  it('Returns empty string when API returns HTTP error status', async () => {
+  it('Returns empty string when HTTP request fails', async () => {
     const mockResponse = {
       ok: false,
       status: 404,
       statusText: 'Not Found'
-    } as unknown as Response
-    mockFetch.mockResolvedValue(mockResponse)
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {}) as jest.MockedFunction<typeof console.error>
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
 
-    const result = await getSeverityId(mockApiKey, 'unknown')
+    const { getSeverityId } = await import('../src/severity.js')
+    const result = await getSeverityId('nonexistent_severity', 'test-api-key')
 
-    expect(result).toBe('')
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(mockConsoleError).toHaveBeenCalledWith(
       new Error('HTTP error! status: 404 Not Found')
     )
+    expect(result).toBe('')
+  })
 
-    consoleSpy.mockRestore()
+  it('Returns empty string when JSON parsing fails', async () => {
+    const mockResponse = {
+      ok: true,
+      json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+    }
+    mockFetch.mockResolvedValue(mockResponse as unknown as Response)
+
+    const { getSeverityId } = await import('../src/severity.js')
+    const result = await getSeverityId('test_severity', 'test-api-key')
+
+    expect(mockConsoleError).toHaveBeenCalledWith(new Error('Invalid JSON'))
+    expect(result).toBe('')
+  })
+
+  it('Returns empty string when network request fails', async () => {
+    const networkError = new Error('Network error')
+    mockFetch.mockRejectedValue(networkError)
+
+    const { getSeverityId } = await import('../src/severity.js')
+    const result = await getSeverityId('test_severity', 'test-api-key')
+
+    expect(mockConsoleError).toHaveBeenCalledWith(networkError)
+    expect(result).toBe('')
   })
 })

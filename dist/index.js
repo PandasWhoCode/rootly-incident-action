@@ -27247,143 +27247,62 @@ function requireCore () {
 var coreExports = requireCore();
 
 /**
- * Safely adds an array to attributes if it contains non-empty strings.
+ * Safely adds an array to attributes if it contains non-empty strings or valid Label objects.
  * @param arr - The array to filter and add
  * @param attributeKey - The key to add to attributes
  * @param attributes - The attributes object to modify
  */
 function addNonEmptyArray(arr, attributeKey, attributes) {
     if (arr !== undefined && arr.length > 0) {
-        const filtered = arr.filter((str) => str.trim().length > 0);
-        if (filtered.length > 0) {
-            attributes[attributeKey] = filtered;
+        if (attributeKey === 'labels') {
+            // Handle Label[] objects - filter out labels with empty keys or values
+            const labelArray = arr;
+            const filtered = labelArray.filter((label) => label.key.trim().length > 0 && label.value.trim().length > 0);
+            if (filtered.length > 0) {
+                attributes[attributeKey] = filtered;
+            }
         }
-    }
-}
-
-/**
- * Create an alert using the Rootly REST API.
- *
- * @param {string} apiKey - The API key to use for authentication.
- * @param {string} summary - The summary of the alert.
- * @param {string} details - The details of the alert.
- * @param {string} alertServiceId - The ID of the service for the alert to target.
- * @param {string} externalId - The external ID of the alert (optional).
- * @param {string} externalUrl - The external URL of the alert (optional).
- * @param {'Low' | 'Medium' | 'High'} alertUrgency - The urgency of the alert (default is 'high').
- * @param {string[]} serviceIds - The IDs of the services to create the alert for.
- * @param {string[]} groupIds - The IDs of the groups to create the alert for.
- * @param {string[]} environmentIds - The IDs of the environments to create the alert for.
- * @returns {string} The ID of the alert.
- *
- */
-async function createAlert(apiKey, // apiKey is required, this is the bearer token for authentication
-summary, // summary is required, this is a brief summary of the alert
-details, // details is required, this is a detailed description of the alert
-alertServiceId, // alertServiceId is required, this is the service ID for the alert to target
-alertUrgency, // alertUrgency is required, this is the urgency of the alert, default is 'high'
-externalId, // externalId is optional, this is the external ID field for the alert
-externalUrl, // externalUrl is optional, this is the external URL field for the alert
-serviceIds, // serviceIds is optional, this is an array of service IDs associated with the alert
-groupIds, // groupIds is optional, this is an array of Alert Group IDs associated with the alert
-environmentIds // environmentIds is optional, this is an array of environment IDs associated with the alert
-) {
-    const url = 'https://api.rootly.com/v1/alerts';
-    const attributes = {
-        summary: summary,
-        source: 'api',
-        noise: 'noise',
-        status: 'triggered',
-        description: details,
-        notification_target_type: 'Service',
-        notification_target_id: alertServiceId,
-        alert_urgency_id: alertUrgency
-    };
-    addNonEmptyArray(serviceIds, 'service_ids', attributes);
-    addNonEmptyArray(groupIds, 'group_ids', attributes);
-    addNonEmptyArray(environmentIds, 'environment_ids', attributes);
-    // Only add externalId and externalUrl if they are provided and not empty
-    if (externalId && externalId !== '') {
-        attributes['external_id'] = externalId;
-    }
-    if (externalUrl && externalUrl !== '') {
-        attributes['external_url'] = externalUrl;
-    }
-    const alertBody = JSON.stringify({
-        data: {
-            type: 'alerts',
-            attributes
+        else {
+            // Handle string[] arrays
+            const stringArray = arr;
+            const filtered = stringArray.filter((str) => str.trim().length > 0);
+            if (filtered.length > 0) {
+                attributes[attributeKey] = filtered;
+            }
         }
-    });
-    const options = {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/vnd.api+json'
-        },
-        body: alertBody
-    };
-    try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
-        }
-        const data = (await response.json());
-        return data.data.id;
-    }
-    catch (error) {
-        console.error(error);
-        console.log(`Alert Body:\n${alertBody}`);
-        return '';
-    }
-}
-
-/**
- * Retrieve the environment ID using the Rootly REST API.
- *
- * @param {string} alertUrgency - The name of the alert urgency.
- * @param {string} apiKey - The API key to use for authentication.
- * @returns {string} The ID of the environment.
- */
-async function getAlertUrgencyId(alertUrgency, apiKey) {
-    const apiAlertUrgencyName = encodeURIComponent(alertUrgency);
-    const url = 'https://api.rootly.com/v1/alert_urgencies?filter%5Bname%5D=' +
-        apiAlertUrgencyName;
-    const options = {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${apiKey}` }
-    };
-    try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
-        }
-        const data = (await response.json());
-        return data.data[0].id;
-    }
-    catch (error) {
-        console.error(error);
-        return '';
     }
 }
 
 /**
  * Create an incident using the Rootly REST API.
  *
- * @param {string} apiKey - The API key to use for authentication.
- * @param {string} title - The title of the incident.
- * @param {string} summary - The description of the incident.
- * @param {string} severityId - The ID of the severity of the incident.
- * @param {boolean} createAsPublic - Whether to create the incident as public or private.
- * @param {string} alertId - The ID of the created alert. (If an alert was created.)
- * @param {string[]} serviceIds - The IDs of the services to create the incident for.
- * @param {string[]} groupIds - The IDs of the groups to create the incident for.
- * @param {string[]} environmentIds - The IDs of the environments to create the incident for.
- * @param {string[]} incidentTypeIds - The IDs of the incident types to create the incident for.
+ * @param {string} apiKey - The API key to use for authentication. (required)
+ * @param {string} title - The title of the incident. (required)
+ * @param {boolean} createAsPublic - Whether to create the incident as public or private. (default is false, meaning private)
+ * @param {string} kind - The kind of the incident. (optional)
+ * @param {string} parentId - The ID of the parent incident. (If creating a child incident.) (optional)
+ * @param {string} duplicateId - The ID of the incident to mark as duplicate. (If marking as duplicate.) (optional)
+ * @param {string} summary - The description of the incident. (optional)
+ * @param {string} userId - The ID of the user attached to the incident. (optional)
+ * @param {string} severityId - The ID of the severity of the incident. (optional)
+ * @param {string[]} alertIds - The ID of the created alert. (If an alert was created.) (optional)
+ * @param {string[]} environmentIds - The IDs of the environments to create the incident for. (optional)
+ * @param {string[]} incidentTypeIds - The IDs of the incident types to create the incident for. (optional)
+ * @param {string[]} serviceIds - The IDs of the services to create the incident for. (optional)
+ * @param {string[]} functionalityIds - The IDs of the functionalities to create the incident for. (optional)
+ * @param {string[]} groupIds - The IDs of the groups to create the incident for. (optional)
+ * @param {string[]} causeIds - The IDs of the causes to create the incident with. (optional)
+ * @param {Label[]} labels - The labels to create the incident with. (optional)
+ * @param {string} slackChannelName - The Slack channel name to post the incident to. (If posting to Slack.) (optional)
+ * @param {string} slackChannelId - The Slack channel ID to post the incident to. (If posting to Slack.) (optional)
+ * @param {string} slackChannelUrl - The Slack channel URL to post the incident to. (If posting to Slack.) (optional)
+ * @param {string} googleDriveParentId - The Google Drive parent ID to create the incident with. (If creating a Google Drive folder.) (optional)
+ * @param {string} googleDriveUrl - The Google Drive URL to create the incident with. (If creating a Google Drive folder.) (optional)
+ * @param {string[]} notifyEmails - The email addresses to notify about the incident. (optional)
  * @returns {string} The ID of the incident.
  *
  */
-async function createIncident(apiKey, title, summary, severityId, createAsPublic, alertId, serviceIds, groupIds, environmentIds, incidentTypeIds) {
+async function createIncident(apiKey, title, createAsPublic, kind, parentId, duplicateId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, groupIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails) {
     // Determine if the incident should be private or public
     let setPrivate = true;
     if (createAsPublic) {
@@ -27395,18 +27314,50 @@ async function createIncident(apiKey, title, summary, severityId, createAsPublic
         private: setPrivate,
         public_title: title,
         title: title,
-        summary: summary,
-        status: 'started',
-        kind: 'normal',
-        severity_id: severityId
+        status: 'started'
     };
+    if (kind && kind !== '') {
+        attributes['kind'] = kind;
+    }
+    if (parentId && parentId !== '') {
+        attributes['parent_id'] = parentId;
+    }
+    if (duplicateId && duplicateId !== '') {
+        attributes['duplicate_id'] = duplicateId;
+    }
+    if (summary && summary !== '') {
+        attributes['summary'] = summary;
+    }
+    if (userId && userId !== '') {
+        attributes['user_id'] = userId;
+    }
+    if (severityId && severityId !== '') {
+        attributes['severity_id'] = severityId;
+    }
     // Safely add non-empty arrays to attributes
     addNonEmptyArray(environmentIds, 'environment_ids', attributes);
     addNonEmptyArray(incidentTypeIds, 'incident_type_ids', attributes);
     addNonEmptyArray(serviceIds, 'service_ids', attributes);
     addNonEmptyArray(groupIds, 'group_ids', attributes);
-    if (alertId && alertId.trim() !== '') {
-        attributes.alert_ids = [alertId];
+    addNonEmptyArray(alertIds, 'alert_ids', attributes);
+    addNonEmptyArray(functionalityIds, 'functionality_ids', attributes);
+    addNonEmptyArray(causeIds, 'cause_ids', attributes);
+    addNonEmptyArray(labels, 'labels', attributes);
+    addNonEmptyArray(notifyEmails, 'notify_emails', attributes);
+    if (slackChannelName && slackChannelName !== '') {
+        attributes['slack_channel_name'] = slackChannelName;
+    }
+    if (slackChannelId && slackChannelId !== '') {
+        attributes['slack_channel_id'] = slackChannelId;
+    }
+    if (slackChannelUrl && slackChannelUrl !== '') {
+        attributes['slack_channel_url'] = slackChannelUrl;
+    }
+    if (googleDriveParentId && googleDriveParentId !== '') {
+        attributes['google_drive_parent_id'] = googleDriveParentId;
+    }
+    if (googleDriveUrl && googleDriveUrl !== '') {
+        attributes['google_drive_url'] = googleDriveUrl;
     }
     const incidentBody = JSON.stringify({
         data: {
@@ -27462,34 +27413,6 @@ async function getServiceId(service, apiKey) {
             coreExports.warning(`Service '${service}' not found`);
             return '';
         }
-        return data.data[0].id;
-    }
-    catch (error) {
-        console.error(error);
-        return '';
-    }
-}
-
-/**
- * Get the group ID using the Rootly REST API.
- *
- * @param {string} group - The name of the group.
- * @param {string} apiKey - The API key to use for authentication.
- * @returns {string} The ID of the group.
- */
-async function getGroupId(group, apiKey) {
-    const apiGroupName = encodeURIComponent(group);
-    const url = 'https://api.rootly.com/v1/alert_groups?include=' + apiGroupName;
-    const options = {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${apiKey}` }
-    };
-    try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
-        }
-        const data = (await response.json());
         return data.data[0].id;
     }
     catch (error) {
@@ -27612,6 +27535,112 @@ async function getIncidentTypeId(incidentType, apiKey) {
     }
 }
 
+// Expect labels to be passed in as
+// key1:value1,key2:value2,key3:value3,etc.
+function createLabelsFromString(labelString) {
+    const labels = [];
+    if (!labelString.trim()) {
+        return labels;
+    }
+    const labelPairs = labelString.split(',');
+    for (const labelPair of labelPairs) {
+        const [key, value] = labelPair.split(':');
+        labels.push({
+            key: key ? key.trim() : '',
+            value: value ? value.trim() : ''
+        });
+    }
+    return labels;
+}
+
+/**
+ * Get the Usery ID using the Rootly REST API.
+ *
+ * @param {string} email - The name of the escalation policy.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the user.
+ */
+async function getUserId(email, apiKey) {
+    const apiUserEmail = encodeURIComponent(email);
+    const url = 'https://api.rootly.com/v1/users?filter%5Bemail%5D=' + apiUserEmail;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${apiKey}` }
+    };
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
+        const data = (await response.json());
+        if (!data.data || data.data.length === 0) {
+            coreExports.warning(`User '${email}' not found`);
+            return '';
+        }
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Retrieve a cause using the Rootly REST API.
+ *
+ * @param {string} cause - The name of the cause.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the cause.
+ */
+async function getCauseId(cause, apiKey) {
+    const apiCauseName = encodeURIComponent(cause);
+    const url = 'https://api.rootly.com/v1/causes?include=' + apiCauseName;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${apiKey}` }
+    };
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
+/**
+ * Retrieve a functionality using the Rootly REST API.
+ *
+ * @param {string} functionality - The name of the functionality.
+ * @param {string} apiKey - The API key to use for authentication.
+ * @returns {string} The ID of the functionality.
+ */
+async function getFunctionalityId(functionality, apiKey) {
+    const apiFunctionalityName = encodeURIComponent(functionality);
+    const url = 'https://api.rootly.com/v1/functionalities?include=' + apiFunctionalityName;
+    const options = {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${apiKey}` }
+    };
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+        }
+        const data = (await response.json());
+        return data.data[0].id;
+    }
+    catch (error) {
+        console.error(error);
+        return '';
+    }
+}
+
 /**
  * The main function for the action.
  *
@@ -27619,44 +27648,69 @@ async function getIncidentTypeId(incidentType, apiKey) {
  */
 async function run() {
     try {
-        const severity = coreExports.getInput('severity');
-        const title = coreExports.getInput('title');
-        const details = coreExports.getInput('summary');
-        const alertSvc = coreExports.getInput('alert_service');
-        const alertUrgency = coreExports.getInput('alert_urgency');
-        const alertExtId = coreExports.getInput('alert_external_id');
-        const alertExtUrl = coreExports.getInput('alert_external_url');
-        const services = coreExports.getInput('services').split(',');
-        const teams = coreExports.getInput('teams').split(',');
-        const groups = coreExports.getInput('alert_groups').split(',');
-        const environments = coreExports.getInput('environments').split(',');
-        const incidentTypes = coreExports.getInput('incident_types').split(',');
-        const createAlertFlag = coreExports.getInput('create_alert') == 'true';
-        const createIncidentFlag = coreExports.getInput('create_incident') == 'true';
-        const createAsPublicFlag = coreExports.getInput('create_public_incident') == 'true';
         // The API key is secret and shall not be logged in any way.
         // The API key shall be used during requests but never logged or stored.
         const apiKey = coreExports.getInput('api_key');
+        // other inputs
+        const title = coreExports.getInput('title');
+        const kind = coreExports.getInput('kind');
+        const parentIncidentId = coreExports.getInput('parent_incident_id');
+        const duplicateIncidentId = coreExports.getInput('duplicate_incident_id');
+        const createAsPublicFlag = coreExports.getInput('create_public_incident') == 'true';
+        const summary = coreExports.getInput('summary');
+        const userEmail = coreExports.getInput('user_email');
+        const severity = coreExports.getInput('severity');
+        const alertIds = coreExports.getInput('alert_ids').split(',');
+        const environments = coreExports.getInput('environments').split(',');
+        const incidentTypes = coreExports.getInput('incident_types').split(',');
+        const services = coreExports.getInput('services').split(',');
+        const functionalities = coreExports.getInput('functionalities')
+            .split(',');
+        const teams = coreExports.getInput('groups').split(',');
+        const causes = coreExports.getInput('causes').split(',');
+        const labels = createLabelsFromString(coreExports.getInput('labels'));
+        const slackChannelName = coreExports.getInput('slack_channel_name');
+        const slackChannelId = coreExports.getInput('slack_channel_id');
+        const slackChannelUrl = coreExports.getInput('slack_channel_url');
+        const googleDriveParentId = coreExports.getInput('google_drive_parent_id');
+        const googleDriveUrl = coreExports.getInput('google_drive_url');
+        const notifyEmails = coreExports.getInput('notify_emails').split(',');
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
         coreExports.debug(`Title: ${title}`);
-        coreExports.debug(`Details: ${details}`);
-        coreExports.debug(`Severity: ${severity}`);
-        coreExports.debug(`Service: ${services}`);
-        coreExports.debug(`Create Alert: ${createAlertFlag}`);
-        coreExports.debug(`Create Incident: ${createIncidentFlag}`);
-        coreExports.debug(`Alert Service: ${alertSvc}`);
-        coreExports.debug(`Alert Urgency: ${alertUrgency}`);
-        coreExports.debug(`Alert External ID: ${alertExtId}`);
-        coreExports.debug(`Alert External URL: ${alertExtUrl}`);
-        coreExports.debug(`Alert Group: ${groups}`);
-        coreExports.debug(`Team: ${teams}`);
-        coreExports.debug(`Environment: ${environments}`);
-        coreExports.debug(`IncidentType: ${incidentTypes}`);
+        coreExports.debug(`Kind: ${kind}`);
+        coreExports.debug(`Parent Incident ID: ${parentIncidentId}`);
+        coreExports.debug(`Duplicate Incident ID: ${duplicateIncidentId}`);
         coreExports.debug(`Create as Public Incident: ${createAsPublicFlag}`);
+        coreExports.debug(`Summary: ${summary}`);
+        coreExports.debug(`User Email: ${userEmail}`);
+        coreExports.debug(`Alert IDs: ${alertIds}`);
+        coreExports.debug(`Environments: ${environments}`);
+        coreExports.debug(`Incident Types: ${incidentTypes}`);
+        coreExports.debug(`Services: ${services}`);
+        coreExports.debug(`Functionalities: ${functionalities}`);
+        coreExports.debug(`Teams: ${teams}`);
+        coreExports.debug(`Causes: ${causes}`);
+        coreExports.debug(`Labels: ${labels}`);
+        coreExports.debug(`Slack Channel Name: ${slackChannelName}`);
+        coreExports.debug(`Slack Channel ID: ${slackChannelId}`);
+        coreExports.debug(`Slack Channel URL: ${slackChannelUrl}`);
+        coreExports.debug(`Google Drive Parent ID: ${googleDriveParentId}`);
+        coreExports.debug(`Google Drive URL: ${googleDriveUrl}`);
+        coreExports.debug(`Notify Emails: ${notifyEmails}`);
         coreExports.debug(`Api Key Length: ${apiKey.length}`); // Do not log the actual API key
-        // Ensure either createAlertFlag or createIncidentFlag is true
-        if (!createAlertFlag && !createIncidentFlag) {
-            throw new Error('At least one of create_alert or create_incident_flag must be true.');
+        // verify kind is valid
+        const validKinds = [
+            'test',
+            'test_sub',
+            'example',
+            'example_sub',
+            'normal',
+            'normal_sub',
+            'backfilled',
+            'scheduled'
+        ];
+        if (kind !== '' && !validKinds.includes(kind)) {
+            throw new Error(`Invalid kind '${kind}'. Valid kinds are: ${validKinds.join(', ')}`);
         }
         // Set up service IDs
         const serviceIds = [];
@@ -27666,40 +27720,19 @@ async function run() {
                 serviceIds.push(serviceId);
             }
         }
-        // Grab the alert service ID
-        let alertSvcId = '';
-        if (createAlertFlag && alertSvc !== '') {
-            alertSvcId = await getServiceId(alertSvc, apiKey);
-        }
-        // Grab the alert urgency ID
-        let alertUrgencyId = '';
-        if (createAlertFlag) {
-            if (alertUrgency !== '') {
-                alertUrgencyId = await getAlertUrgencyId(alertUrgency, apiKey);
-            }
-            else {
-                // Default to 'high' if not provided
-                alertUrgencyId = await getAlertUrgencyId('High', apiKey);
-            }
-        }
-        // Set up group IDs (used for alert groups)
-        // check if groups are provided, if not, use an empty array
-        const groupIds = [];
-        for (const group of groups) {
-            if (group !== '') {
-                const groupId = await getGroupId(group, apiKey);
-                groupIds.push(groupId);
-            }
-        }
         // Set up team IDs (teams are the incident groups)
         const teamIds = [];
-        if (createIncidentFlag) {
-            for (const team of teams) {
-                if (team !== '') {
-                    const teamId = await getTeamId(team, apiKey);
-                    teamIds.push(teamId);
-                }
+        for (const team of teams) {
+            if (team !== '') {
+                const teamId = await getTeamId(team, apiKey);
+                teamIds.push(teamId);
             }
+        }
+        // Set up user ids
+        let userId = '';
+        if (userEmail !== '') {
+            userId = await getUserId(userEmail, apiKey);
+            coreExports.debug(`User ID: ${userId}`);
         }
         // Set up environment IDs
         const environmentIds = [];
@@ -27711,43 +27744,34 @@ async function run() {
         }
         // Set up incident type IDs
         const incidentTypeIds = [];
-        if (createIncidentFlag) {
-            for (const incidentType of incidentTypes) {
-                if (incidentType !== '') {
-                    const incidentTypeId = await getIncidentTypeId(incidentType, apiKey);
-                    incidentTypeIds.push(incidentTypeId);
-                }
+        for (const incidentType of incidentTypes) {
+            if (incidentType !== '') {
+                const incidentTypeId = await getIncidentTypeId(incidentType, apiKey);
+                incidentTypeIds.push(incidentTypeId);
+            }
+        }
+        // set up cause IDs
+        const causeIds = [];
+        for (const cause of causes) {
+            if (cause !== '') {
+                const causeId = await getCauseId(cause, apiKey);
+                causeIds.push(causeId);
+            }
+        }
+        // set up the functionality IDs
+        const functionalityIds = [];
+        for (const functionality of functionalities) {
+            if (functionality !== '') {
+                const functionalityId = await getFunctionalityId(functionality, apiKey);
+                functionalityIds.push(functionalityId);
             }
         }
         // Set up severity ID
-        let severityId = '';
-        if (createIncidentFlag) {
-            severityId = await getSeverityId(severity, apiKey);
-        }
-        // Create the alert
-        let alertId = '';
-        if (createAlertFlag) {
-            alertId = await createAlert(apiKey, title, // Using title as summary for the alert
-            details, // Using details as description for the alert
-            alertSvcId, // Alert Service ID
-            alertUrgencyId, // Alert Urgency ID
-            alertExtId, // External ID
-            alertExtUrl, // External URL
-            serviceIds, // Service IDs
-            groupIds, // Alert Group IDs
-            environmentIds // Environment IDs
-            );
-        }
-        // Debug log the created alert ID
-        coreExports.debug(`Created Alert ID: ${alertId}`);
+        const severityId = await getSeverityId(severity, apiKey);
         // Create the incident
-        let incidentId = '';
-        if (createIncidentFlag) {
-            incidentId = await createIncident(apiKey, title, details, severityId, createAsPublicFlag, alertId, serviceIds, teamIds, environmentIds, incidentTypeIds);
-        }
+        const incidentId = await createIncident(apiKey, title, createAsPublicFlag, kind, parentIncidentId, duplicateIncidentId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, teamIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails);
         // Set outputs for other workflow steps to use
         coreExports.setOutput('incident-id', incidentId);
-        coreExports.setOutput('alert-id', alertId);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
