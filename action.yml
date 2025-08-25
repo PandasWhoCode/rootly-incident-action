@@ -19,7 +19,7 @@ inputs:
   kind:
     description:
       The kind of incident to create. One of 'test', 'test_sub', 'example',
-      'example_sub', 'normal', 'normal_sub', 'backfilled', 'scheduled'
+      'example_sub', 'normal', 'normal_sub', 'backfilled', 'scheduled'.
     required: false
     default: 'normal'
   parent_incident_id:
@@ -37,7 +37,7 @@ inputs:
     required: false
     default: 'My Incident Summary'
   user_email:
-    description: The email of the user to attach to the incident
+    description: The email of the user to attach to the incident.
   severity:
     description: The severity of the incident.
     required: true
@@ -52,8 +52,7 @@ inputs:
     default: 'production'
   incident_types:
     description:
-      The comma-separated names of the incident types to create the incident
-      for.
+      The comma-separated names of the incident types to create the incident for.
     required: false
   services:
     description:
