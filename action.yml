@@ -52,7 +52,8 @@ inputs:
     default: 'production'
   incident_types:
     description:
-      The comma-separated names of the incident types to create the incident for.
+      The comma-separated names of the incident types to create the incident
+      for.
     required: false
   services:
     description:
