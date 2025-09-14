@@ -22,31 +22,32 @@ export async function run(): Promise<void> {
     const apiKey: string = core.getInput('api_key')
 
     // other inputs
-    const title: string = core.getInput('title')
-    const kind: string = core.getInput('kind')
-    const parentIncidentId: string = core.getInput('parent_incident_id')
-    const duplicateIncidentId: string = core.getInput('duplicate_incident_id')
+    const alertIds: string[] = core.getInput('alert_ids').split(',')
+    const causes: string[] = core.getInput('causes').split(',')
     const createAsPublicFlag: boolean =
       core.getInput('create_public_incident') == 'true'
-    const summary: string = core.getInput('summary')
-    const userEmail: string = core.getInput('user_email')
-    const severity: string = core.getInput('severity')
-    const alertIds: string[] = core.getInput('alert_ids').split(',')
+    const duplicateIncidentId: string = core.getInput('duplicate_incident_id')
     const environments: string[] = core.getInput('environments').split(',')
-    const incidentTypes: string[] = core.getInput('incident_types').split(',')
-    const services: string[] = core.getInput('services').split(',')
     const functionalities: string[] = core
       .getInput('functionalities')
       .split(',')
-    const teams: string[] = core.getInput('groups').split(',')
-    const causes: string[] = core.getInput('causes').split(',')
-    const labels = createLabelsFromString(core.getInput('labels'))
-    const slackChannelName: string = core.getInput('slack_channel_name')
-    const slackChannelId: string = core.getInput('slack_channel_id')
-    const slackChannelUrl: string = core.getInput('slack_channel_url')
     const googleDriveParentId: string = core.getInput('google_drive_parent_id')
     const googleDriveUrl: string = core.getInput('google_drive_url')
+    const incidentTypes: string[] = core.getInput('incident_types').split(',')
+    const kind: string = core.getInput('kind')
+    const labels = createLabelsFromString(core.getInput('labels'))
     const notifyEmails: string[] = core.getInput('notify_emails').split(',')
+    const parentIncidentId: string = core.getInput('parent_incident_id')
+    const services: string[] = core.getInput('services').split(',')
+    const severity: string = core.getInput('severity')
+    const slackChannelId: string = core.getInput('slack_channel_id')
+    const slackChannelName: string = core.getInput('slack_channel_name')
+    const slackChannelUrl: string = core.getInput('slack_channel_url')
+    const summary: string = core.getInput('summary')
+    const teams: string[] = core.getInput('groups').split(',')
+    const title: string = core.getInput('title')
+    const url: string = core.getInput('url')
+    const userEmail: string = core.getInput('user_email')
 
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
     core.debug(`Title: ${title}`)
@@ -64,6 +65,7 @@ export async function run(): Promise<void> {
     core.debug(`Teams: ${teams}`)
     core.debug(`Causes: ${causes}`)
     core.debug(`Labels: ${labels}`)
+    core.debug(`URL: ${url}`)
     core.debug(`Slack Channel Name: ${slackChannelName}`)
     core.debug(`Slack Channel ID: ${slackChannelId}`)
     core.debug(`Slack Channel URL: ${slackChannelUrl}`)
@@ -158,6 +160,7 @@ export async function run(): Promise<void> {
     const incidentId = await createIncident(
       apiKey,
       title,
+      url,
       createAsPublicFlag,
       kind,
       parentIncidentId,

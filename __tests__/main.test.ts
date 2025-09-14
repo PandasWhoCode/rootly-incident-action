@@ -10,6 +10,7 @@ describe('main.ts', () => {
     (
       apiKey: string,
       title: string,
+      url: string,
       createAsPublic: boolean,
       kind?: string,
       parentId?: string,
@@ -140,28 +141,29 @@ describe('main.ts', () => {
       // Set up comprehensive input mocks
       core.getInput
         .mockReturnValueOnce('test-api-key') // api_key
-        .mockReturnValueOnce('Test Incident') // title
-        .mockReturnValueOnce('normal') // kind
-        .mockReturnValueOnce('parent-123') // parent_incident_id
-        .mockReturnValueOnce('dup-456') // duplicate_incident_id
-        .mockReturnValueOnce('true') // create_public_incident
-        .mockReturnValueOnce('Test summary') // summary
-        .mockReturnValueOnce('user@example.com') // user_email
-        .mockReturnValueOnce('critical') // severity
         .mockReturnValueOnce('alert-1,alert-2') // alert_ids
-        .mockReturnValueOnce('env1,env2') // environments
-        .mockReturnValueOnce('type1,type2') // incident_types
-        .mockReturnValueOnce('svc1,svc2') // services
-        .mockReturnValueOnce('func1,func2') // functionalities
-        .mockReturnValueOnce('team1,team2') // groups
         .mockReturnValueOnce('cause1,cause2') // causes
-        .mockReturnValueOnce('env:prod,team:backend') // labels
-        .mockReturnValueOnce('incident-channel') // slack_channel_name
-        .mockReturnValueOnce('C123456') // slack_channel_id
-        .mockReturnValueOnce('https://slack.com/channels/incident') // slack_channel_url
+        .mockReturnValueOnce('true') // create_public_incident
+        .mockReturnValueOnce('dup-456') // duplicate_incident_id
+        .mockReturnValueOnce('env1,env2') // environments
+        .mockReturnValueOnce('func1,func2') // functionalities
         .mockReturnValueOnce('drive-parent-123') // google_drive_parent_id
         .mockReturnValueOnce('https://drive.google.com/folder/123') // google_drive_url
+        .mockReturnValueOnce('type1,type2') // incident_types
+        .mockReturnValueOnce('normal') // kind
+        .mockReturnValueOnce('env:prod,team:backend') // labels
         .mockReturnValueOnce('notify1@example.com,notify2@example.com') // notify_emails
+        .mockReturnValueOnce('parent-123') // parent_incident_id
+        .mockReturnValueOnce('svc1,svc2') // services
+        .mockReturnValueOnce('critical') // severity
+        .mockReturnValueOnce('C123456') // slack_channel_id
+        .mockReturnValueOnce('incident-channel') // slack_channel_name
+        .mockReturnValueOnce('https://slack.com/channels/incident') // slack_channel_url
+        .mockReturnValueOnce('Test summary') // summary
+        .mockReturnValueOnce('team1,team2') // teams
+        .mockReturnValueOnce('Test Incident') // title
+        .mockReturnValueOnce('https://example.com/incident') // url
+        .mockReturnValueOnce('user@example.com') // user_email
 
       const { run } = await import('../src/main.js')
       await run()
@@ -186,6 +188,7 @@ describe('main.ts', () => {
       expect(createIncidentMock).toHaveBeenCalledWith(
         'test-api-key',
         'Test Incident',
+        'https://example.com/incident',
         true, // createAsPublic
         'normal',
         'parent-123',
@@ -212,32 +215,34 @@ describe('main.ts', () => {
       expect(core.setOutput).toHaveBeenCalledWith('incident-id', 'incident-456')
     })
 
+    core.getInput
+      .mockReturnValueOnce('test-api-key') // api_key
+      .mockReturnValueOnce('') // alert_ids (empty)
+      .mockReturnValueOnce('') // causes (empty)
+      .mockReturnValueOnce('false') // create_public_incident
+      .mockReturnValueOnce('') // duplicate_incident_id (empty)
+      .mockReturnValueOnce('') // environments (empty)
+      .mockReturnValueOnce('') // functionalities (empty)
+      .mockReturnValueOnce('') // google_drive_parent_id (empty)
+      .mockReturnValueOnce('') // google_drive_url (empty)
+      .mockReturnValueOnce('') // incident_types (empty)
+      .mockReturnValueOnce('') // kind (empty)
+      .mockReturnValueOnce('') // labels (empty)
+      .mockReturnValueOnce('') // notify_emails (empty)
+      .mockReturnValueOnce('') // parent_incident_id (empty)
+      .mockReturnValueOnce('') // services (empty)
+      .mockReturnValueOnce('low') // severity
+      .mockReturnValueOnce('') // slack_channel_id (empty)
+      .mockReturnValueOnce('') // slack_channel_name (empty)
+      .mockReturnValueOnce('') // slack_channel_url (empty)
+      .mockReturnValueOnce('') // summary (empty)
+      .mockReturnValueOnce('') // teams (empty)
+      .mockReturnValueOnce('Minimal Incident') // title
+      .mockReturnValueOnce('https://example.com/incident') // url
+      .mockReturnValueOnce('') // user_email (empty)
+
     it('Creates incident with minimal parameters', async () => {
       // Set up minimal input mocks
-      core.getInput
-        .mockReturnValueOnce('test-api-key') // api_key
-        .mockReturnValueOnce('Minimal Incident') // title
-        .mockReturnValueOnce('') // kind (empty)
-        .mockReturnValueOnce('') // parent_incident_id (empty)
-        .mockReturnValueOnce('') // duplicate_incident_id (empty)
-        .mockReturnValueOnce('false') // create_public_incident
-        .mockReturnValueOnce('') // summary (empty)
-        .mockReturnValueOnce('') // user_email (empty)
-        .mockReturnValueOnce('low') // severity
-        .mockReturnValueOnce('') // alert_ids (empty)
-        .mockReturnValueOnce('') // environments (empty)
-        .mockReturnValueOnce('') // incident_types (empty)
-        .mockReturnValueOnce('') // services (empty)
-        .mockReturnValueOnce('') // functionalities (empty)
-        .mockReturnValueOnce('') // groups (empty)
-        .mockReturnValueOnce('') // causes (empty)
-        .mockReturnValueOnce('') // labels (empty)
-        .mockReturnValueOnce('') // slack_channel_name (empty)
-        .mockReturnValueOnce('') // slack_channel_id (empty)
-        .mockReturnValueOnce('') // slack_channel_url (empty)
-        .mockReturnValueOnce('') // google_drive_parent_id (empty)
-        .mockReturnValueOnce('') // google_drive_url (empty)
-        .mockReturnValueOnce('') // notify_emails (empty)
 
       createLabelsFromStringMock.mockReturnValue([])
 
@@ -254,6 +259,7 @@ describe('main.ts', () => {
       expect(createIncidentMock).toHaveBeenCalledWith(
         'test-api-key',
         'Minimal Incident',
+        'https://example.com/incident',
         false, // createAsPublic
         '',
         '',
@@ -315,6 +321,7 @@ describe('main.ts', () => {
           .mockReturnValueOnce('') // groups
           .mockReturnValueOnce('') // causes
           .mockReturnValueOnce('') // labels
+          .mockReturnValueOnce('https://example.com/incident') // url
           .mockReturnValueOnce('') // slack_channel_name
           .mockReturnValueOnce('') // slack_channel_id
           .mockReturnValueOnce('') // slack_channel_url
@@ -330,6 +337,7 @@ describe('main.ts', () => {
         expect(createIncidentMock).toHaveBeenCalledWith(
           'test-api-key',
           'Test Incident',
+          'https://example.com/incident',
           false,
           kind,
           '',
@@ -374,6 +382,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // groups
         .mockReturnValueOnce('') // causes
         .mockReturnValueOnce('') // labels
+        .mockReturnValueOnce('https://example.com/incident') // url
         .mockReturnValueOnce('') // slack_channel_name
         .mockReturnValueOnce('') // slack_channel_id
         .mockReturnValueOnce('') // slack_channel_url
@@ -410,6 +419,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // groups
         .mockReturnValueOnce('') // causes
         .mockReturnValueOnce('') // labels
+        .mockReturnValueOnce('https://example.com/incident') // url
         .mockReturnValueOnce('') // slack_channel_name
         .mockReturnValueOnce('') // slack_channel_id
         .mockReturnValueOnce('') // slack_channel_url
@@ -450,6 +460,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // groups
         .mockReturnValueOnce('') // causes
         .mockReturnValueOnce('') // labels
+        .mockReturnValueOnce('https://example.com/incident') // url
         .mockReturnValueOnce('') // slack_channel_name
         .mockReturnValueOnce('') // slack_channel_id
         .mockReturnValueOnce('') // slack_channel_url
@@ -487,6 +498,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // groups
         .mockReturnValueOnce('') // causes
         .mockReturnValueOnce('') // labels
+        .mockReturnValueOnce('https://example.com/incident') // url
         .mockReturnValueOnce('') // slack_channel_name
         .mockReturnValueOnce('') // slack_channel_id
         .mockReturnValueOnce('') // slack_channel_url
@@ -524,6 +536,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('team1') // groups
         .mockReturnValueOnce('cause1') // causes
         .mockReturnValueOnce('env:prod') // labels
+        .mockReturnValueOnce('https://example.com/incident') // url
         .mockReturnValueOnce('incident-channel') // slack_channel_name
         .mockReturnValueOnce('C123456') // slack_channel_id
         .mockReturnValueOnce('https://slack.com/channels/incident') // slack_channel_url
@@ -554,6 +567,7 @@ describe('main.ts', () => {
       expect(core.debug).toHaveBeenCalledWith('Teams: team1')
       expect(core.debug).toHaveBeenCalledWith('Causes: cause1')
       expect(core.debug).toHaveBeenCalledWith('Labels: [object Object]')
+      expect(core.debug).toHaveBeenCalledWith('https://example.com/incident')
       expect(core.debug).toHaveBeenCalledWith(
         'Slack Channel Name: incident-channel'
       )
