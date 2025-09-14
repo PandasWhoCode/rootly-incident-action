@@ -81,6 +81,7 @@ metadata integration.
 
 - `api_key` - Rootly API authentication token
 - `title` - The incident title
+- `URL` - The url to the incident
 - `severity` - The incident severity level
 
 **Key optional parameters:**
@@ -159,6 +160,7 @@ jobs:
           slack_channel_name: 'incidents'
           notify_emails: 'oncall@company.com,management@company.com'
           create_public_incident: 'false'
+          url: 'https://rootly.com/incidents'
           api_key: ${{ secrets.ROOTLY_API_KEY }}
 
       - name: Output Incident Details
@@ -200,6 +202,7 @@ jobs:
           google_drive_parent_id: 'folder-id-for-incidents'
           notify_emails: 'dba-team@company.com,sre-oncall@company.com'
           create_public_incident: 'true'
+          url: 'https://rootly.com/incidents'
           api_key: ${{ secrets.ROOTLY_API_KEY }}
 
       - name: Output Incident Details
@@ -252,6 +255,7 @@ jobs:
           slack_channel_name: 'build-failures'
           notify_emails: 'engineering-oncall@company.com'
           create_public_incident: 'false'
+          url: 'https://rootly.com/incidents'
           api_key: ${{ secrets.ROOTLY_API_KEY }}
 ```
 
@@ -287,6 +291,7 @@ jobs:
           notify_emails: ${{ github.event.client_payload.notify_emails }}
           create_public_incident:
             ${{ github.event.client_payload.create_public_incident || 'false' }}
+          url: ${{ github.event.client_payload.url }}
           api_key: ${{ secrets.ROOTLY_API_KEY }}
 ```
 
@@ -299,6 +304,7 @@ jobs:
 | `api_key`                | x        | -                         | Rootly API authentication token                                |
 | `title`                  | x        | `My Incident Title`       | The title of the incident                                      |
 | `severity`               | x        | `Sev0`                    | The severity of the incident                                   |
+| `url`                    | x        | -                         | The URL of the incident                                        |
 | `kind`                   |          | `normal`                  | The kind of incident (test, example, normal, backfilled, etc.) |
 | `parent_incident_id`     |          | -                         | The ID of the parent incident, if any                          |
 | `duplicate_incident_id`  |          | -                         | The ID of the incident to mark as duplicate, if any            |

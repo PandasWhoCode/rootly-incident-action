@@ -27278,6 +27278,7 @@ function addNonEmptyArray(arr, attributeKey, attributes) {
  *
  * @param {string} apiKey - The API key to use for authentication. (required)
  * @param {string} title - The title of the incident. (required)
+ * @param {string} url - The URL for rootly incidents (required)
  * @param {boolean} createAsPublic - Whether to create the incident as public or private. (default is false, meaning private)
  * @param {string} kind - The kind of the incident. (optional)
  * @param {string} parentId - The ID of the parent incident. (If creating a child incident.) (optional)
@@ -27302,18 +27303,19 @@ function addNonEmptyArray(arr, attributeKey, attributes) {
  * @returns {string} The ID of the incident.
  *
  */
-async function createIncident(apiKey, title, createAsPublic, kind, parentId, duplicateId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, groupIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails) {
+async function createIncident(apiKey, title, url, createAsPublic, kind, parentId, duplicateId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, groupIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails) {
     // Determine if the incident should be private or public
     let setPrivate = true;
     if (createAsPublic) {
         setPrivate = false;
     }
     // Build the rootly request
-    const url = 'https://api.rootly.com/v1/incidents';
+    const apiUrl = 'https://api.rootly.com/v1/incidents';
     const attributes = {
         private: setPrivate,
         public_title: title,
         title: title,
+        url: url,
         status: 'started'
     };
     if (kind && kind !== '') {
@@ -27374,7 +27376,7 @@ async function createIncident(apiKey, title, createAsPublic, kind, parentId, dup
         body: incidentBody
     };
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(apiUrl, options);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
         }
@@ -27652,29 +27654,30 @@ async function run() {
         // The API key shall be used during requests but never logged or stored.
         const apiKey = coreExports.getInput('api_key');
         // other inputs
-        const title = coreExports.getInput('title');
-        const kind = coreExports.getInput('kind');
-        const parentIncidentId = coreExports.getInput('parent_incident_id');
-        const duplicateIncidentId = coreExports.getInput('duplicate_incident_id');
-        const createAsPublicFlag = coreExports.getInput('create_public_incident') == 'true';
-        const summary = coreExports.getInput('summary');
-        const userEmail = coreExports.getInput('user_email');
-        const severity = coreExports.getInput('severity');
         const alertIds = coreExports.getInput('alert_ids').split(',');
+        const causes = coreExports.getInput('causes').split(',');
+        const createAsPublicFlag = coreExports.getInput('create_public_incident') == 'true';
+        const duplicateIncidentId = coreExports.getInput('duplicate_incident_id');
         const environments = coreExports.getInput('environments').split(',');
-        const incidentTypes = coreExports.getInput('incident_types').split(',');
-        const services = coreExports.getInput('services').split(',');
         const functionalities = coreExports.getInput('functionalities')
             .split(',');
-        const teams = coreExports.getInput('groups').split(',');
-        const causes = coreExports.getInput('causes').split(',');
-        const labels = createLabelsFromString(coreExports.getInput('labels'));
-        const slackChannelName = coreExports.getInput('slack_channel_name');
-        const slackChannelId = coreExports.getInput('slack_channel_id');
-        const slackChannelUrl = coreExports.getInput('slack_channel_url');
         const googleDriveParentId = coreExports.getInput('google_drive_parent_id');
         const googleDriveUrl = coreExports.getInput('google_drive_url');
+        const incidentTypes = coreExports.getInput('incident_types').split(',');
+        const kind = coreExports.getInput('kind');
+        const labels = createLabelsFromString(coreExports.getInput('labels'));
         const notifyEmails = coreExports.getInput('notify_emails').split(',');
+        const parentIncidentId = coreExports.getInput('parent_incident_id');
+        const services = coreExports.getInput('services').split(',');
+        const severity = coreExports.getInput('severity');
+        const slackChannelId = coreExports.getInput('slack_channel_id');
+        const slackChannelName = coreExports.getInput('slack_channel_name');
+        const slackChannelUrl = coreExports.getInput('slack_channel_url');
+        const summary = coreExports.getInput('summary');
+        const teams = coreExports.getInput('groups').split(',');
+        const title = coreExports.getInput('title');
+        const url = coreExports.getInput('url');
+        const userEmail = coreExports.getInput('user_email');
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
         coreExports.debug(`Title: ${title}`);
         coreExports.debug(`Kind: ${kind}`);
@@ -27691,6 +27694,7 @@ async function run() {
         coreExports.debug(`Teams: ${teams}`);
         coreExports.debug(`Causes: ${causes}`);
         coreExports.debug(`Labels: ${labels}`);
+        coreExports.debug(`URL: ${url}`);
         coreExports.debug(`Slack Channel Name: ${slackChannelName}`);
         coreExports.debug(`Slack Channel ID: ${slackChannelId}`);
         coreExports.debug(`Slack Channel URL: ${slackChannelUrl}`);
@@ -27769,7 +27773,7 @@ async function run() {
         // Set up severity ID
         const severityId = await getSeverityId(severity, apiKey);
         // Create the incident
-        const incidentId = await createIncident(apiKey, title, createAsPublicFlag, kind, parentIncidentId, duplicateIncidentId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, teamIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails);
+        const incidentId = await createIncident(apiKey, title, url, createAsPublicFlag, kind, parentIncidentId, duplicateIncidentId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, teamIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails);
         // Set outputs for other workflow steps to use
         coreExports.setOutput('incident-id', incidentId);
     }
