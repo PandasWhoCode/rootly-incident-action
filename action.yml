@@ -39,7 +39,7 @@ inputs:
     description: The email of the user to attach to the incident.
   url:
     description: The URL of the incident.
-    required: true
+    required: false
   severity:
     description: The severity of the incident.
     required: true

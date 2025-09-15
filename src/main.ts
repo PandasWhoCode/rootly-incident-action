@@ -160,8 +160,8 @@ export async function run(): Promise<void> {
     const incidentId = await createIncident(
       apiKey,
       title,
-      url,
       createAsPublicFlag,
+      url,
       kind,
       parentIncidentId,
       duplicateIncidentId,

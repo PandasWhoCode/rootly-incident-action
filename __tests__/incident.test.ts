@@ -14,8 +14,8 @@ const { createIncident } = await import('../src/incident.js')
 describe('incident.ts', () => {
   const mockApiKey = 'test-api-key'
   const mockTitle = 'Test Incident'
-  const mockUrl = 'https://example.com/incident'
   const mockCreateAsPublic = false
+  const mockUrl = 'https://example.com/incident'
   const mockKind = 'normal'
   const mockParentId = 'parent-123'
   const mockDuplicateId = 'dup-456'
@@ -55,8 +55,8 @@ describe('incident.ts', () => {
     const result = await createIncident(
       mockApiKey,
       mockTitle,
-      mockUrl,
       mockCreateAsPublic,
+      mockUrl,
       mockKind,
       mockParentId,
       mockDuplicateId,
@@ -94,9 +94,9 @@ describe('incident.ts', () => {
               private: true,
               public_title: mockTitle,
               title: mockTitle,
-              url: mockUrl,
               status: 'started',
               kind: mockKind,
+              url: mockUrl,
               parent_id: mockParentId,
               duplicate_id: mockDuplicateId,
               summary: mockSummary,
@@ -134,7 +134,6 @@ describe('incident.ts', () => {
     const result = await createIncident(
       mockApiKey,
       mockTitle,
-      mockUrl,
       mockCreateAsPublic
     )
 
@@ -153,7 +152,6 @@ describe('incident.ts', () => {
               private: true,
               public_title: mockTitle,
               title: mockTitle,
-              url: mockUrl,
               status: 'started'
             }
           }
@@ -173,7 +171,6 @@ describe('incident.ts', () => {
     const result = await createIncident(
       mockApiKey,
       mockTitle,
-      mockUrl,
       true // createAsPublic = true
     )
 
@@ -187,7 +184,6 @@ describe('incident.ts', () => {
               private: false, // Should be false when createAsPublic is true
               public_title: mockTitle,
               title: mockTitle,
-              url: mockUrl,
               status: 'started'
             }
           }
@@ -207,8 +203,8 @@ describe('incident.ts', () => {
     const result = await createIncident(
       mockApiKey,
       mockTitle,
-      mockUrl,
       mockCreateAsPublic,
+      '', // empty url
       '', // empty kind
       '', // empty parentId
       '', // empty duplicateId
@@ -241,7 +237,6 @@ describe('incident.ts', () => {
               private: true,
               public_title: mockTitle,
               title: mockTitle,
-              url: mockUrl,
               status: 'started'
             }
           }
@@ -261,8 +256,8 @@ describe('incident.ts', () => {
     const result = await createIncident(
       mockApiKey,
       mockTitle,
-      mockUrl,
       mockCreateAsPublic,
+      undefined, // undefined url
       undefined, // undefined kind
       undefined, // undefined parentId
       undefined, // undefined duplicateId
@@ -295,7 +290,6 @@ describe('incident.ts', () => {
               private: true,
               public_title: mockTitle,
               title: mockTitle,
-              url: mockUrl,
               status: 'started'
             }
           }

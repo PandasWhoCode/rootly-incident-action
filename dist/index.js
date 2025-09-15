@@ -27278,8 +27278,8 @@ function addNonEmptyArray(arr, attributeKey, attributes) {
  *
  * @param {string} apiKey - The API key to use for authentication. (required)
  * @param {string} title - The title of the incident. (required)
- * @param {string} url - The URL for rootly incidents (required)
  * @param {boolean} createAsPublic - Whether to create the incident as public or private. (default is false, meaning private)
+ * @param {string} url - The URL for rootly incidents (optional)
  * @param {string} kind - The kind of the incident. (optional)
  * @param {string} parentId - The ID of the parent incident. (If creating a child incident.) (optional)
  * @param {string} duplicateId - The ID of the incident to mark as duplicate. (If marking as duplicate.) (optional)
@@ -27303,7 +27303,7 @@ function addNonEmptyArray(arr, attributeKey, attributes) {
  * @returns {string} The ID of the incident.
  *
  */
-async function createIncident(apiKey, title, url, createAsPublic, kind, parentId, duplicateId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, groupIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails) {
+async function createIncident(apiKey, title, createAsPublic, url, kind, parentId, duplicateId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, groupIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails) {
     // Determine if the incident should be private or public
     let setPrivate = true;
     if (createAsPublic) {
@@ -27315,11 +27315,13 @@ async function createIncident(apiKey, title, url, createAsPublic, kind, parentId
         private: setPrivate,
         public_title: title,
         title: title,
-        url: url,
         status: 'started'
     };
     if (kind && kind !== '') {
         attributes['kind'] = kind;
+    }
+    if (url && url !== '') {
+        attributes['url'] = url;
     }
     if (parentId && parentId !== '') {
         attributes['parent_id'] = parentId;
@@ -27773,7 +27775,7 @@ async function run() {
         // Set up severity ID
         const severityId = await getSeverityId(severity, apiKey);
         // Create the incident
-        const incidentId = await createIncident(apiKey, title, url, createAsPublicFlag, kind, parentIncidentId, duplicateIncidentId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, teamIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails);
+        const incidentId = await createIncident(apiKey, title, createAsPublicFlag, url, kind, parentIncidentId, duplicateIncidentId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, teamIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails);
         // Set outputs for other workflow steps to use
         coreExports.setOutput('incident-id', incidentId);
     }

@@ -10,8 +10,8 @@ describe('main.ts', () => {
     (
       apiKey: string,
       title: string,
-      url: string,
       createAsPublic: boolean,
+      url?: string,
       kind?: string,
       parentId?: string,
       duplicateId?: string,
@@ -188,8 +188,8 @@ describe('main.ts', () => {
       expect(createIncidentMock).toHaveBeenCalledWith(
         'test-api-key',
         'Test Incident',
-        'https://example.com/incident',
         true, // createAsPublic
+        'https://example.com/incident',
         'normal',
         'parent-123',
         'dup-456',
@@ -240,7 +240,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // summary (empty)
         .mockReturnValueOnce('') // teams (groups in main.ts) (empty)
         .mockReturnValueOnce('Minimal Incident') // title
-        .mockReturnValueOnce('https://example.com/minimal-incident') // url (required)
+        .mockReturnValueOnce('') // url (required)
         .mockReturnValueOnce('') // user_email (empty)
 
       createLabelsFromStringMock.mockReturnValue([])
@@ -258,8 +258,8 @@ describe('main.ts', () => {
       expect(createIncidentMock).toHaveBeenCalledWith(
         'test-api-key',
         'Minimal Incident',
-        'https://example.com/minimal-incident', // url (required)
         false, // createAsPublic
+        '',
         '',
         '',
         '',
@@ -325,7 +325,7 @@ describe('main.ts', () => {
           .mockReturnValueOnce('') // summary
           .mockReturnValueOnce('') // teams (groups in main.ts)
           .mockReturnValueOnce('Test Incident') // title
-          .mockReturnValueOnce('https://example.com/incident') // url
+          .mockReturnValueOnce('') // url
           .mockReturnValueOnce('') // user_email
 
         createLabelsFromStringMock.mockReturnValue([])
@@ -336,8 +336,8 @@ describe('main.ts', () => {
         expect(createIncidentMock).toHaveBeenCalledWith(
           'test-api-key',
           'Test Incident',
-          'https://example.com/incident',
           false,
+          '',
           kind,
           '',
           '',
@@ -386,7 +386,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // summary
         .mockReturnValueOnce('') // teams (groups in main.ts)
         .mockReturnValueOnce('Test Incident') // title
-        .mockReturnValueOnce('https://example.com/incident') // url
+        .mockReturnValueOnce('') // url
         .mockReturnValueOnce('') // user_email
 
       createLabelsFromStringMock.mockReturnValue([])
@@ -423,7 +423,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // summary
         .mockReturnValueOnce('') // teams (groups in main.ts)
         .mockReturnValueOnce('Test Incident') // title
-        .mockReturnValueOnce('https://example.com/incident') // url
+        .mockReturnValueOnce('') // url
         .mockReturnValueOnce('') // user_email
 
       createLabelsFromStringMock.mockReturnValue([])
@@ -464,7 +464,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // summary
         .mockReturnValueOnce('') // teams (groups in main.ts)
         .mockReturnValueOnce('Test Incident') // title
-        .mockReturnValueOnce('https://example.com/incident') // url
+        .mockReturnValueOnce('') // url
         .mockReturnValueOnce('') // user_email
 
       createLabelsFromStringMock.mockReturnValue([])
@@ -502,7 +502,7 @@ describe('main.ts', () => {
         .mockReturnValueOnce('') // summary
         .mockReturnValueOnce('') // teams (groups in main.ts)
         .mockReturnValueOnce('Test Incident') // title
-        .mockReturnValueOnce('https://example.com/incident') // url
+        .mockReturnValueOnce('') // url
         .mockReturnValueOnce('') // user_email
 
       createLabelsFromStringMock.mockReturnValue([])
