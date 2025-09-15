@@ -44,7 +44,7 @@ export async function run(): Promise<void> {
     const slackChannelName: string = core.getInput('slack_channel_name')
     const slackChannelUrl: string = core.getInput('slack_channel_url')
     const summary: string = core.getInput('summary')
-    const teams: string[] = core.getInput('groups').split(',')
+    const teams: string[] = core.getInput('teams').split(',')
     const title: string = core.getInput('title')
     const url: string = core.getInput('url')
     const userEmail: string = core.getInput('user_email')

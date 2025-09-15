@@ -27674,7 +27674,7 @@ async function run() {
         const slackChannelName = coreExports.getInput('slack_channel_name');
         const slackChannelUrl = coreExports.getInput('slack_channel_url');
         const summary = coreExports.getInput('summary');
-        const teams = coreExports.getInput('groups').split(',');
+        const teams = coreExports.getInput('teams').split(',');
         const title = coreExports.getInput('title');
         const url = coreExports.getInput('url');
         const userEmail = coreExports.getInput('user_email');
