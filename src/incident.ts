@@ -9,6 +9,7 @@ import type { Label } from './label.js'
  * @param {string} apiKey - The API key to use for authentication. (required)
  * @param {string} title - The title of the incident. (required)
  * @param {boolean} createAsPublic - Whether to create the incident as public or private. (default is false, meaning private)
+ * @param {string} url - The URL for rootly incidents (optional)
  * @param {string} kind - The kind of the incident. (optional)
  * @param {string} parentId - The ID of the parent incident. (If creating a child incident.) (optional)
  * @param {string} duplicateId - The ID of the incident to mark as duplicate. (If marking as duplicate.) (optional)
@@ -36,6 +37,7 @@ export async function createIncident(
   apiKey: string,
   title: string,
   createAsPublic: boolean,
+  url?: string,
   kind?: string,
   parentId?: string,
   duplicateId?: string,
@@ -64,7 +66,7 @@ export async function createIncident(
   }
 
   // Build the rootly request
-  const url = 'https://api.rootly.com/v1/incidents'
+  const apiUrl = 'https://api.rootly.com/v1/incidents'
 
   const attributes: Record<string, string | string[] | boolean> = {
     private: setPrivate,
@@ -75,6 +77,9 @@ export async function createIncident(
 
   if (kind && kind !== '') {
     attributes['kind'] = kind
+  }
+  if (url && url !== '') {
+    attributes['url'] = url
   }
   if (parentId && parentId !== '') {
     attributes['parent_id'] = parentId
@@ -136,7 +141,7 @@ export async function createIncident(
   }
 
   try {
-    const response = await fetch(url, options)
+    const response = await fetch(apiUrl, options)
     if (!response.ok) {
       throw new Error(
         `HTTP error! status: ${response.status} ${response.statusText}`
