@@ -15,6 +15,7 @@ describe('incident.ts', () => {
   const mockApiKey = 'test-api-key'
   const mockTitle = 'Test Incident'
   const mockCreateAsPublic = false
+  const mockUrl = 'https://example.com/incident'
   const mockKind = 'normal'
   const mockParentId = 'parent-123'
   const mockDuplicateId = 'dup-456'
@@ -55,6 +56,7 @@ describe('incident.ts', () => {
       mockApiKey,
       mockTitle,
       mockCreateAsPublic,
+      mockUrl,
       mockKind,
       mockParentId,
       mockDuplicateId,
@@ -94,6 +96,7 @@ describe('incident.ts', () => {
               title: mockTitle,
               status: 'started',
               kind: mockKind,
+              url: mockUrl,
               parent_id: mockParentId,
               duplicate_id: mockDuplicateId,
               summary: mockSummary,
@@ -201,6 +204,7 @@ describe('incident.ts', () => {
       mockApiKey,
       mockTitle,
       mockCreateAsPublic,
+      '', // empty url
       '', // empty kind
       '', // empty parentId
       '', // empty duplicateId
@@ -253,6 +257,7 @@ describe('incident.ts', () => {
       mockApiKey,
       mockTitle,
       mockCreateAsPublic,
+      undefined, // undefined url
       undefined, // undefined kind
       undefined, // undefined parentId
       undefined, // undefined duplicateId
