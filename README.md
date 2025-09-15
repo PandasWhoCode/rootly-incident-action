@@ -81,13 +81,13 @@ metadata integration.
 
 - `api_key` - Rootly API authentication token
 - `title` - The incident title
-- `URL` - The url to the incident
 - `severity` - The incident severity level
 
 **Key optional parameters:**
 
 - `kind` - Incident type (test, test_sub, example, example_sub, normal,
   normal_sub, backfilled, scheduled, etc.)
+- `URL` - The url to the incident
 - `summary` - Detailed incident description
 - `services` - Comma-separated service names
 - `teams` - Comma-separated team names
@@ -299,32 +299,32 @@ jobs:
 
 ### Input Parameters
 
-| Parameter                | Required | Default                   | Description                                                    |
-| ------------------------ | -------- | ------------------------- | -------------------------------------------------------------- |
-| `api_key`                | x        | -                         | Rootly API authentication token                                |
-| `title`                  | x        | `My Incident Title`       | The title of the incident                                      |
-| `severity`               | x        | `Sev0`                    | The severity of the incident                                   |
-| `url`                    | x        | -                         | The URL of the incident                                        |
-| `kind`                   |          | `normal`                  | The kind of incident (test, example, normal, backfilled, etc.) |
-| `parent_incident_id`     |          | -                         | The ID of the parent incident, if any                          |
-| `duplicate_incident_id`  |          | -                         | The ID of the incident to mark as duplicate, if any            |
-| `create_public_incident` |          | `false`                   | Set to true to create a public incident                        |
-| `summary`                |          | `My Incident Summary`     | The summary of the incident                                    |
-| `user_email`             |          | -                         | The email of the user to attach to the incident                |
-| `alert_ids`              |          | -                         | Comma-separated list of alert IDs to link to the incident      |
-| `environments`           |          | `production`              | Comma-separated names of environments                          |
-| `incident_types`         |          | -                         | Comma-separated names of incident types                        |
-| `services`               |          | `my-rootly-service`       | Comma-separated names of services                              |
-| `functionalities`        |          | `my-rootly-functionality` | Comma-separated names of functionalities                       |
-| `teams`                  |          | `my-rootly-team`          | Comma-separated names of teams                                 |
-| `causes`                 |          | `my-rootly-cause`         | Comma-separated names of causes                                |
-| `labels`                 |          | `my-rootly-label`         | Comma-separated list of key:value pairs                        |
-| `slack_channel_name`     |          | -                         | The name of the Slack channel to post updates to               |
-| `slack_channel_id`       |          | -                         | The ID of the Slack channel to post updates to                 |
-| `slack_channel_url`      |          | -                         | The URL of the Slack channel to post updates to                |
-| `google_drive_parent_id` |          | -                         | The Google Drive parent ID to create the incident document in  |
-| `google_drive_url`       |          | -                         | The URL of the Google Drive document for the incident          |
-| `notify_emails`          |          | -                         | Comma-separated list of email addresses to notify              |
+| Parameter                | Required | Default               | Description                                                    |
+| ------------------------ | -------- | --------------------- | -------------------------------------------------------------- |
+| `api_key`                | x        | -                     | Rootly API authentication token                                |
+| `title`                  | x        | `My Incident Title`   | The title of the incident                                      |
+| `severity`               | x        | -                     | The severity of the incident                                   |
+| `url`                    |          | -                     | The URL of the incident                                        |
+| `kind`                   |          | `normal`              | The kind of incident (test, example, normal, backfilled, etc.) |
+| `parent_incident_id`     |          | -                     | The ID of the parent incident, if any                          |
+| `duplicate_incident_id`  |          | -                     | The ID of the incident to mark as duplicate, if any            |
+| `create_public_incident` |          | `false`               | Set to true to create a public incident                        |
+| `summary`                |          | `My Incident Summary` | The summary of the incident                                    |
+| `user_email`             |          | -                     | The email of the user to attach to the incident                |
+| `alert_ids`              |          | -                     | Comma-separated list of alert IDs to link to the incident      |
+| `environments`           |          | -                     | Comma-separated names of environments                          |
+| `incident_types`         |          | -                     | Comma-separated names of incident types                        |
+| `services`               |          | -                     | Comma-separated names of services                              |
+| `functionalities`        |          | -                     | Comma-separated names of functionalities                       |
+| `teams`                  |          | -                     | Comma-separated names of teams                                 |
+| `causes`                 |          | -                     | Comma-separated names of causes                                |
+| `labels`                 |          | -                     | Comma-separated list of key:value pairs                        |
+| `slack_channel_name`     |          | -                     | The name of the Slack channel to post updates to               |
+| `slack_channel_id`       |          | -                     | The ID of the Slack channel to post updates to                 |
+| `slack_channel_url`      |          | -                     | The URL of the Slack channel to post updates to                |
+| `google_drive_parent_id` |          | -                     | The Google Drive parent ID to create the incident document in  |
+| `google_drive_url`       |          | -                     | The URL of the Google Drive document for the incident          |
+| `notify_emails`          |          | -                     | Comma-separated list of email addresses to notify              |
 
 ### Output Parameters
 
