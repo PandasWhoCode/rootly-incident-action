@@ -87,7 +87,7 @@ metadata integration.
 
 - `kind` - Incident type (test, test_sub, example, example_sub, normal,
   normal_sub, backfilled, scheduled, etc.)
-- `URL` - The url to the incident
+- `URL` - The URL to the incident
 - `summary` - Detailed incident description
 - `services` - Comma-separated service names
 - `teams` - Comma-separated team names
