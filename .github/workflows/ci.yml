@@ -21,15 +21,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         id: checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
 
       - name: Setup Node.js
         id: setup-node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -49,37 +54,3 @@ jobs:
       - name: Test
         id: npm-ci-test
         run: npm run ci-test
-#  test-action:
-#    name: GitHub Actions Test
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#      - name: Checkout
-#        id: checkout
-#        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-#
-#      - name: Test Local Action
-#        id: test-action
-#        uses: ./
-#        with:
-#          services: 'my-rootly-service'
-#          alert_groups: 'my-rootly-group'
-#          teams: 'my-rootly-team'
-#          environments: 'production'
-#          incident_types: 'my-incident-type'
-#          title: 'My Test Incident'
-#          summary:
-#            'This is a test incident created by the GitHub Actions workflow.'
-#          severity: 'low'
-#          create_alert: 'true'
-#          api_key: ${{ secrets.TEST_ROOTLY_API_KEY }}
-#        env:
-#          ACTIONS_STEP_DEBUG: true
-#
-#      - name: Print Output
-#        id: output
-#        run: |
-#          # shellcheck disable=SC2129
-#          echo "## Action Outputs" >> "${GITHUB_STEP_SUMMARY}}"
-#          echo "Alert ID: ${{ steps.test-action.outputs.alert-id }}" >> "${GITHUB_STEP_SUMMARY}}"
-#          echo "Incident ID: ${{ steps.test-action.outputs.incident-id }}" >> "${GITHUB_STEP_SUMMARY}}"
