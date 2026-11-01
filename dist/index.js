@@ -1,394 +1,173 @@
-import require$$0 from 'os';
-import require$$0$1 from 'crypto';
-import require$$1 from 'fs';
-import require$$1$2 from 'path';
-import require$$2 from 'http';
-import require$$3 from 'https';
+import * as os from 'os';
+import os__default from 'os';
+import * as crypto from 'crypto';
+import * as fs from 'fs';
+import { promises } from 'fs';
+import 'path';
+import http from 'http';
+import https from 'https';
 import 'net';
-import require$$1$1 from 'tls';
-import require$$4 from 'events';
-import require$$5$1 from 'assert';
+import require$$1 from 'tls';
+import events$1 from 'events';
+import 'assert';
 import require$$6 from 'util';
 import { createRequire } from 'node:module';
 import require$$5 from 'string_decoder';
-import require$$2$1 from 'child_process';
-import require$$6$1 from 'timers';
+import 'child_process';
+import 'timers';
+
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Sanitizes an input into a string so it can be passed into issueCommand safely
+ * @param input input to sanitize into a string
+ */
+function toCommandValue(input) {
+    if (input === null || input === undefined) {
+        return '';
+    }
+    else if (typeof input === 'string' || input instanceof String) {
+        return input;
+    }
+    return JSON.stringify(input);
+}
+/**
+ *
+ * @param annotationProperties
+ * @returns The command properties to send with the actual annotation command
+ * See IssueCommandProperties: https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionCommandManager.cs#L646
+ */
+function toCommandProperties(annotationProperties) {
+    if (!Object.keys(annotationProperties).length) {
+        return {};
+    }
+    return {
+        title: annotationProperties.title,
+        file: annotationProperties.file,
+        line: annotationProperties.startLine,
+        endLine: annotationProperties.endLine,
+        col: annotationProperties.startColumn,
+        endColumn: annotationProperties.endColumn
+    };
+}
+
+/**
+ * Issues a command to the GitHub Actions runner
+ *
+ * @param command - The command name to issue
+ * @param properties - Additional properties for the command (key-value pairs)
+ * @param message - The message to include with the command
+ * @remarks
+ * This function outputs a specially formatted string to stdout that the Actions
+ * runner interprets as a command. These commands can control workflow behavior,
+ * set outputs, create annotations, mask values, and more.
+ *
+ * Command Format:
+ *   ::name key=value,key=value::message
+ *
+ * @example
+ * ```typescript
+ * // Issue a warning annotation
+ * issueCommand('warning', {}, 'This is a warning message');
+ * // Output: ::warning::This is a warning message
+ *
+ * // Set an environment variable
+ * issueCommand('set-env', { name: 'MY_VAR' }, 'some value');
+ * // Output: ::set-env name=MY_VAR::some value
+ *
+ * // Add a secret mask
+ * issueCommand('add-mask', {}, 'secretValue123');
+ * // Output: ::add-mask::secretValue123
+ * ```
+ *
+ * @internal
+ * This is an internal utility function that powers the public API functions
+ * such as setSecret, warning, error, and exportVariable.
+ */
+function issueCommand(command, properties, message) {
+    const cmd = new Command(command, properties, message);
+    process.stdout.write(cmd.toString() + os.EOL);
+}
+const CMD_STRING = '::';
+class Command {
+    constructor(command, properties, message) {
+        if (!command) {
+            command = 'missing.command';
+        }
+        this.command = command;
+        this.properties = properties;
+        this.message = message;
+    }
+    toString() {
+        let cmdStr = CMD_STRING + this.command;
+        if (this.properties && Object.keys(this.properties).length > 0) {
+            cmdStr += ' ';
+            let first = true;
+            for (const key in this.properties) {
+                if (this.properties.hasOwnProperty(key)) {
+                    const val = this.properties[key];
+                    if (val) {
+                        if (first) {
+                            first = false;
+                        }
+                        else {
+                            cmdStr += ',';
+                        }
+                        cmdStr += `${key}=${escapeProperty(val)}`;
+                    }
+                }
+            }
+        }
+        cmdStr += `${CMD_STRING}${escapeData(this.message)}`;
+        return cmdStr;
+    }
+}
+function escapeData(s) {
+    return toCommandValue(s)
+        .replace(/%/g, '%25')
+        .replace(/\r/g, '%0D')
+        .replace(/\n/g, '%0A');
+}
+function escapeProperty(s) {
+    return toCommandValue(s)
+        .replace(/%/g, '%25')
+        .replace(/\r/g, '%0D')
+        .replace(/\n/g, '%0A')
+        .replace(/:/g, '%3A')
+        .replace(/,/g, '%2C');
+}
+
+// For internal use, subject to change.
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function issueFileCommand(command, message) {
+    const filePath = process.env[`GITHUB_${command}`];
+    if (!filePath) {
+        throw new Error(`Unable to find environment variable for file command ${command}`);
+    }
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`Missing file at path: ${filePath}`);
+    }
+    fs.appendFileSync(filePath, `${toCommandValue(message)}${os.EOL}`, {
+        encoding: 'utf8'
+    });
+}
+function prepareKeyValueMessage(key, value) {
+    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
+    const convertedValue = toCommandValue(value);
+    // These should realistically never happen, but just in case someone finds a
+    // way to exploit uuid generation let's not allow keys or values that contain
+    // the delimiter.
+    if (key.includes(delimiter)) {
+        throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
+    }
+    if (convertedValue.includes(delimiter)) {
+        throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
+    }
+    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
+}
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
-
-var core = {};
-
-var command = {};
-
-var utils$1 = {};
-
-var hasRequiredUtils$1;
-
-function requireUtils$1 () {
-	if (hasRequiredUtils$1) return utils$1;
-	hasRequiredUtils$1 = 1;
-	// We use any as a valid input type
-	/* eslint-disable @typescript-eslint/no-explicit-any */
-	Object.defineProperty(utils$1, "__esModule", { value: true });
-	utils$1.toCommandValue = toCommandValue;
-	utils$1.toCommandProperties = toCommandProperties;
-	/**
-	 * Sanitizes an input into a string so it can be passed into issueCommand safely
-	 * @param input input to sanitize into a string
-	 */
-	function toCommandValue(input) {
-	    if (input === null || input === undefined) {
-	        return '';
-	    }
-	    else if (typeof input === 'string' || input instanceof String) {
-	        return input;
-	    }
-	    return JSON.stringify(input);
-	}
-	/**
-	 *
-	 * @param annotationProperties
-	 * @returns The command properties to send with the actual annotation command
-	 * See IssueCommandProperties: https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionCommandManager.cs#L646
-	 */
-	function toCommandProperties(annotationProperties) {
-	    if (!Object.keys(annotationProperties).length) {
-	        return {};
-	    }
-	    return {
-	        title: annotationProperties.title,
-	        file: annotationProperties.file,
-	        line: annotationProperties.startLine,
-	        endLine: annotationProperties.endLine,
-	        col: annotationProperties.startColumn,
-	        endColumn: annotationProperties.endColumn
-	    };
-	}
-	
-	return utils$1;
-}
-
-var hasRequiredCommand;
-
-function requireCommand () {
-	if (hasRequiredCommand) return command;
-	hasRequiredCommand = 1;
-	var __createBinding = (command && command.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    var desc = Object.getOwnPropertyDescriptor(m, k);
-	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-	      desc = { enumerable: true, get: function() { return m[k]; } };
-	    }
-	    Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    o[k2] = m[k];
-	}));
-	var __setModuleDefault = (command && command.__setModuleDefault) || (Object.create ? (function(o, v) {
-	    Object.defineProperty(o, "default", { enumerable: true, value: v });
-	}) : function(o, v) {
-	    o["default"] = v;
-	});
-	var __importStar = (command && command.__importStar) || (function () {
-	    var ownKeys = function(o) {
-	        ownKeys = Object.getOwnPropertyNames || function (o) {
-	            var ar = [];
-	            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-	            return ar;
-	        };
-	        return ownKeys(o);
-	    };
-	    return function (mod) {
-	        if (mod && mod.__esModule) return mod;
-	        var result = {};
-	        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-	        __setModuleDefault(result, mod);
-	        return result;
-	    };
-	})();
-	Object.defineProperty(command, "__esModule", { value: true });
-	command.issueCommand = issueCommand;
-	command.issue = issue;
-	const os = __importStar(require$$0);
-	const utils_1 = requireUtils$1();
-	/**
-	 * Issues a command to the GitHub Actions runner
-	 *
-	 * @param command - The command name to issue
-	 * @param properties - Additional properties for the command (key-value pairs)
-	 * @param message - The message to include with the command
-	 * @remarks
-	 * This function outputs a specially formatted string to stdout that the Actions
-	 * runner interprets as a command. These commands can control workflow behavior,
-	 * set outputs, create annotations, mask values, and more.
-	 *
-	 * Command Format:
-	 *   ::name key=value,key=value::message
-	 *
-	 * @example
-	 * ```typescript
-	 * // Issue a warning annotation
-	 * issueCommand('warning', {}, 'This is a warning message');
-	 * // Output: ::warning::This is a warning message
-	 *
-	 * // Set an environment variable
-	 * issueCommand('set-env', { name: 'MY_VAR' }, 'some value');
-	 * // Output: ::set-env name=MY_VAR::some value
-	 *
-	 * // Add a secret mask
-	 * issueCommand('add-mask', {}, 'secretValue123');
-	 * // Output: ::add-mask::secretValue123
-	 * ```
-	 *
-	 * @internal
-	 * This is an internal utility function that powers the public API functions
-	 * such as setSecret, warning, error, and exportVariable.
-	 */
-	function issueCommand(command, properties, message) {
-	    const cmd = new Command(command, properties, message);
-	    process.stdout.write(cmd.toString() + os.EOL);
-	}
-	function issue(name, message = '') {
-	    issueCommand(name, {}, message);
-	}
-	const CMD_STRING = '::';
-	class Command {
-	    constructor(command, properties, message) {
-	        if (!command) {
-	            command = 'missing.command';
-	        }
-	        this.command = command;
-	        this.properties = properties;
-	        this.message = message;
-	    }
-	    toString() {
-	        let cmdStr = CMD_STRING + this.command;
-	        if (this.properties && Object.keys(this.properties).length > 0) {
-	            cmdStr += ' ';
-	            let first = true;
-	            for (const key in this.properties) {
-	                if (this.properties.hasOwnProperty(key)) {
-	                    const val = this.properties[key];
-	                    if (val) {
-	                        if (first) {
-	                            first = false;
-	                        }
-	                        else {
-	                            cmdStr += ',';
-	                        }
-	                        cmdStr += `${key}=${escapeProperty(val)}`;
-	                    }
-	                }
-	            }
-	        }
-	        cmdStr += `${CMD_STRING}${escapeData(this.message)}`;
-	        return cmdStr;
-	    }
-	}
-	function escapeData(s) {
-	    return (0, utils_1.toCommandValue)(s)
-	        .replace(/%/g, '%25')
-	        .replace(/\r/g, '%0D')
-	        .replace(/\n/g, '%0A');
-	}
-	function escapeProperty(s) {
-	    return (0, utils_1.toCommandValue)(s)
-	        .replace(/%/g, '%25')
-	        .replace(/\r/g, '%0D')
-	        .replace(/\n/g, '%0A')
-	        .replace(/:/g, '%3A')
-	        .replace(/,/g, '%2C');
-	}
-	
-	return command;
-}
-
-var fileCommand = {};
-
-var hasRequiredFileCommand;
-
-function requireFileCommand () {
-	if (hasRequiredFileCommand) return fileCommand;
-	hasRequiredFileCommand = 1;
-	// For internal use, subject to change.
-	var __createBinding = (fileCommand && fileCommand.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    var desc = Object.getOwnPropertyDescriptor(m, k);
-	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-	      desc = { enumerable: true, get: function() { return m[k]; } };
-	    }
-	    Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    o[k2] = m[k];
-	}));
-	var __setModuleDefault = (fileCommand && fileCommand.__setModuleDefault) || (Object.create ? (function(o, v) {
-	    Object.defineProperty(o, "default", { enumerable: true, value: v });
-	}) : function(o, v) {
-	    o["default"] = v;
-	});
-	var __importStar = (fileCommand && fileCommand.__importStar) || (function () {
-	    var ownKeys = function(o) {
-	        ownKeys = Object.getOwnPropertyNames || function (o) {
-	            var ar = [];
-	            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-	            return ar;
-	        };
-	        return ownKeys(o);
-	    };
-	    return function (mod) {
-	        if (mod && mod.__esModule) return mod;
-	        var result = {};
-	        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-	        __setModuleDefault(result, mod);
-	        return result;
-	    };
-	})();
-	Object.defineProperty(fileCommand, "__esModule", { value: true });
-	fileCommand.issueFileCommand = issueFileCommand;
-	fileCommand.prepareKeyValueMessage = prepareKeyValueMessage;
-	// We use any as a valid input type
-	/* eslint-disable @typescript-eslint/no-explicit-any */
-	const crypto = __importStar(require$$0$1);
-	const fs = __importStar(require$$1);
-	const os = __importStar(require$$0);
-	const utils_1 = requireUtils$1();
-	function issueFileCommand(command, message) {
-	    const filePath = process.env[`GITHUB_${command}`];
-	    if (!filePath) {
-	        throw new Error(`Unable to find environment variable for file command ${command}`);
-	    }
-	    if (!fs.existsSync(filePath)) {
-	        throw new Error(`Missing file at path: ${filePath}`);
-	    }
-	    fs.appendFileSync(filePath, `${(0, utils_1.toCommandValue)(message)}${os.EOL}`, {
-	        encoding: 'utf8'
-	    });
-	}
-	function prepareKeyValueMessage(key, value) {
-	    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
-	    const convertedValue = (0, utils_1.toCommandValue)(value);
-	    // These should realistically never happen, but just in case someone finds a
-	    // way to exploit uuid generation let's not allow keys or values that contain
-	    // the delimiter.
-	    if (key.includes(delimiter)) {
-	        throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
-	    }
-	    if (convertedValue.includes(delimiter)) {
-	        throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
-	    }
-	    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
-	}
-	
-	return fileCommand;
-}
-
-var oidcUtils = {};
-
-var lib = {};
-
-var proxy = {};
-
-var hasRequiredProxy;
-
-function requireProxy () {
-	if (hasRequiredProxy) return proxy;
-	hasRequiredProxy = 1;
-	Object.defineProperty(proxy, "__esModule", { value: true });
-	proxy.getProxyUrl = getProxyUrl;
-	proxy.checkBypass = checkBypass;
-	function getProxyUrl(reqUrl) {
-	    const usingSsl = reqUrl.protocol === 'https:';
-	    if (checkBypass(reqUrl)) {
-	        return undefined;
-	    }
-	    const proxyVar = (() => {
-	        if (usingSsl) {
-	            return process.env['https_proxy'] || process.env['HTTPS_PROXY'];
-	        }
-	        else {
-	            return process.env['http_proxy'] || process.env['HTTP_PROXY'];
-	        }
-	    })();
-	    if (proxyVar) {
-	        try {
-	            return new DecodedURL(proxyVar);
-	        }
-	        catch (_a) {
-	            if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
-	                return new DecodedURL(`http://${proxyVar}`);
-	        }
-	    }
-	    else {
-	        return undefined;
-	    }
-	}
-	function checkBypass(reqUrl) {
-	    if (!reqUrl.hostname) {
-	        return false;
-	    }
-	    const reqHost = reqUrl.hostname;
-	    if (isLoopbackAddress(reqHost)) {
-	        return true;
-	    }
-	    const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
-	    if (!noProxy) {
-	        return false;
-	    }
-	    // Determine the request port
-	    let reqPort;
-	    if (reqUrl.port) {
-	        reqPort = Number(reqUrl.port);
-	    }
-	    else if (reqUrl.protocol === 'http:') {
-	        reqPort = 80;
-	    }
-	    else if (reqUrl.protocol === 'https:') {
-	        reqPort = 443;
-	    }
-	    // Format the request hostname and hostname with port
-	    const upperReqHosts = [reqUrl.hostname.toUpperCase()];
-	    if (typeof reqPort === 'number') {
-	        upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
-	    }
-	    // Compare request host against noproxy
-	    for (const upperNoProxyItem of noProxy
-	        .split(',')
-	        .map(x => x.trim().toUpperCase())
-	        .filter(x => x)) {
-	        if (upperNoProxyItem === '*' ||
-	            upperReqHosts.some(x => x === upperNoProxyItem ||
-	                x.endsWith(`.${upperNoProxyItem}`) ||
-	                (upperNoProxyItem.startsWith('.') &&
-	                    x.endsWith(`${upperNoProxyItem}`)))) {
-	            return true;
-	        }
-	    }
-	    return false;
-	}
-	function isLoopbackAddress(host) {
-	    const hostLower = host.toLowerCase();
-	    return (hostLower === 'localhost' ||
-	        hostLower.startsWith('127.') ||
-	        hostLower.startsWith('[::1]') ||
-	        hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
-	}
-	class DecodedURL extends URL {
-	    constructor(url, base) {
-	        super(url, base);
-	        this._decodedUsername = decodeURIComponent(super.username);
-	        this._decodedPassword = decodeURIComponent(super.password);
-	    }
-	    get username() {
-	        return this._decodedUsername;
-	    }
-	    get password() {
-	        return this._decodedPassword;
-	    }
-	}
-	
-	return proxy;
-}
 
 var tunnel$1 = {};
 
@@ -397,10 +176,10 @@ var hasRequiredTunnel$1;
 function requireTunnel$1 () {
 	if (hasRequiredTunnel$1) return tunnel$1;
 	hasRequiredTunnel$1 = 1;
-	var tls = require$$1$1;
-	var http = require$$2;
-	var https = require$$3;
-	var events = require$$4;
+	var tls = require$$1;
+	var http$1 = http;
+	var https$1 = https;
+	var events = events$1;
 	var util = require$$6;
 
 
@@ -412,13 +191,13 @@ function requireTunnel$1 () {
 
 	function httpOverHttp(options) {
 	  var agent = new TunnelingAgent(options);
-	  agent.request = http.request;
+	  agent.request = http$1.request;
 	  return agent;
 	}
 
 	function httpsOverHttp(options) {
 	  var agent = new TunnelingAgent(options);
-	  agent.request = http.request;
+	  agent.request = http$1.request;
 	  agent.createSocket = createSecureSocket;
 	  agent.defaultPort = 443;
 	  return agent;
@@ -426,13 +205,13 @@ function requireTunnel$1 () {
 
 	function httpOverHttps(options) {
 	  var agent = new TunnelingAgent(options);
-	  agent.request = https.request;
+	  agent.request = https$1.request;
 	  return agent;
 	}
 
 	function httpsOverHttps(options) {
 	  var agent = new TunnelingAgent(options);
-	  agent.request = https.request;
+	  agent.request = https$1.request;
 	  agent.createSocket = createSecureSocket;
 	  agent.defaultPort = 443;
 	  return agent;
@@ -443,7 +222,7 @@ function requireTunnel$1 () {
 	  var self = this;
 	  self.options = options || {};
 	  self.proxyOptions = self.options.proxy || {};
-	  self.maxSockets = self.options.maxSockets || http.Agent.defaultMaxSockets;
+	  self.maxSockets = self.options.maxSockets || http$1.Agent.defaultMaxSockets;
 	  self.requests = [];
 	  self.sockets = [];
 
@@ -669,6 +448,8 @@ function requireTunnel () {
 	tunnel = requireTunnel$1();
 	return tunnel;
 }
+
+requireTunnel();
 
 var undici = {};
 
@@ -1158,6 +939,24 @@ function requireErrors () {
 	  [kSecureProxyConnectionError] = true
 	}
 
+	const kMessageSizeExceededError = Symbol.for('undici.error.UND_ERR_WS_MESSAGE_SIZE_EXCEEDED');
+	class MessageSizeExceededError extends UndiciError {
+	  constructor (message) {
+	    super(message);
+	    this.name = 'MessageSizeExceededError';
+	    this.message = message || 'Max decompressed message size exceeded';
+	    this.code = 'UND_ERR_WS_MESSAGE_SIZE_EXCEEDED';
+	  }
+
+	  static [Symbol.hasInstance] (instance) {
+	    return instance && instance[kMessageSizeExceededError] === true
+	  }
+
+	  get [kMessageSizeExceededError] () {
+	    return true
+	  }
+	}
+
 	errors = {
 	  AbortError,
 	  HTTPParserError,
@@ -1181,7 +980,8 @@ function requireErrors () {
 	  ResponseExceededMaxSizeError,
 	  RequestRetryError,
 	  ResponseError,
-	  SecureProxyConnectionError
+	  SecureProxyConnectionError,
+	  MessageSizeExceededError
 	};
 	return errors;
 }
@@ -2485,6 +2285,10 @@ function requireRequest$1 () {
 	      throw new InvalidArgumentError('upgrade must be a string')
 	    }
 
+	    if (upgrade && !isValidHeaderValue(upgrade)) {
+	      throw new InvalidArgumentError('invalid upgrade header')
+	    }
+
 	    if (headersTimeout != null && (!Number.isFinite(headersTimeout) || headersTimeout < 0)) {
 	      throw new InvalidArgumentError('invalid headersTimeout')
 	    }
@@ -2678,11 +2482,77 @@ function requireRequest$1 () {
 	    }
 	  }
 
-	  onUpgrade (statusCode, headers, socket) {
+	  /**
+	   * @param {number|null} statusCode
+	   * @param {Buffer[]|null} headers
+	   * @param {import('node:stream').Duplex} socket
+	   * @param {string} [statusText]
+	   */
+	  onUpgrade (statusCode, headers, socket, statusText = '') {
+	    this.onFinally();
+
 	    assert(!this.aborted);
 	    assert(!this.completed);
 
-	    return this[kHandler].onUpgrade(statusCode, headers, socket)
+	    if (statusCode !== null) {
+	      this.#publishUpgradeHeaders(statusCode, headers, statusText);
+	    }
+
+	    const result = this[kHandler].onUpgrade(statusCode, headers, socket);
+
+	    if (!this.aborted) {
+	      this.completed = true;
+	      if (statusCode !== null) {
+	        this.#publishUpgradeTrailers();
+	      }
+	    }
+
+	    return result
+	  }
+
+	  /**
+	   * @param {number} statusCode
+	   * @param {import('node:http2').IncomingHttpHeaders} headers
+	   * @param {(headers: import('node:http2').IncomingHttpHeaders) => Buffer[]} parseHeaders
+	   * @param {string} [statusText]
+	   */
+	  onUpgradeResponse (statusCode, headers, parseHeaders, statusText = '') {
+	    assert(!this.aborted);
+	    assert(this.completed);
+
+	    if (channels.headers.hasSubscribers) {
+	      this.#publishUpgradeHeaders(statusCode, parseHeaders(headers), statusText);
+	    }
+	    this.#publishUpgradeTrailers();
+	  }
+
+	  /**
+	   * @param {Error} error
+	   */
+	  onUpgradeError (error) {
+	    assert(!this.aborted);
+	    assert(this.completed);
+
+	    if (channels.error.hasSubscribers) {
+	      channels.error.publish({ request: this, error });
+	    }
+	  }
+
+	  /**
+	   * @param {number} statusCode
+	   * @param {Buffer[]} headers
+	   * @param {string} statusText
+	   */
+	  #publishUpgradeHeaders (statusCode, headers, statusText) {
+	    if (channels.headers.hasSubscribers) {
+	      channels.headers.publish({ request: this, response: { statusCode, headers, statusText } });
+	    }
+	  }
+
+	  #publishUpgradeTrailers () {
+	    if (channels.trailers.hasSubscribers) {
+	      channels.trailers.publish({ request: this, trailers: [] });
+	    }
 	  }
 
 	  onComplete (trailers) {
@@ -2765,7 +2635,13 @@ function requireRequest$1 () {
 	      } else if (typeof val[i] === 'object') {
 	        throw new InvalidArgumentError(`invalid ${key} header`)
 	      } else {
-	        arr.push(`${val[i]}`);
+	        // Coerce primitives (and reject unsafe coercions such as functions
+	        // with a crafted toString/Symbol.toPrimitive).
+	        const str = `${val[i]}`;
+	        if (!isValidHeaderValue(str)) {
+	          throw new InvalidArgumentError(`invalid ${key} header`)
+	        }
+	        arr.push(str);
 	      }
 	    }
 	    val = arr;
@@ -2776,16 +2652,27 @@ function requireRequest$1 () {
 	  } else if (val === null) {
 	    val = '';
 	  } else {
+	    // Coerce primitives (and reject unsafe coercions such as functions
+	    // with a crafted toString/Symbol.toPrimitive).
 	    val = `${val}`;
+	    if (!isValidHeaderValue(val)) {
+	      throw new InvalidArgumentError(`invalid ${key} header`)
+	    }
 	  }
 
-	  if (request.host === null && headerName === 'host') {
+	  if (headerName === 'host') {
+	    if (request.host !== null) {
+	      throw new InvalidArgumentError('duplicate host header')
+	    }
 	    if (typeof val !== 'string') {
 	      throw new InvalidArgumentError('invalid host header')
 	    }
 	    // Consumed by Client
 	    request.host = val;
-	  } else if (request.contentLength === null && headerName === 'content-length') {
+	  } else if (headerName === 'content-length') {
+	    if (request.contentLength !== null) {
+	      throw new InvalidArgumentError('duplicate content-length header')
+	    }
 	    request.contentLength = parseInt(val, 10);
 	    if (!Number.isFinite(request.contentLength)) {
 	      throw new InvalidArgumentError('invalid content-length header')
@@ -2895,6 +2782,7 @@ function requireDispatcherBase () {
 	if (hasRequiredDispatcherBase) return dispatcherBase;
 	hasRequiredDispatcherBase = 1;
 
+	const buffer = __require$d();
 	const Dispatcher = requireDispatcher();
 	const {
 	  ClientDestroyedError,
@@ -2906,15 +2794,32 @@ function requireDispatcherBase () {
 	const kOnDestroyed = Symbol('onDestroyed');
 	const kOnClosed = Symbol('onClosed');
 	const kInterceptedDispatch = Symbol('Intercepted Dispatch');
+	const kWebSocketOptions = Symbol('webSocketOptions');
+	const kEventSourceOptions = Symbol('eventSourceOptions');
 
 	class DispatcherBase extends Dispatcher {
-	  constructor () {
+	  constructor (opts) {
 	    super();
 
 	    this[kDestroyed] = false;
 	    this[kOnDestroyed] = null;
 	    this[kClosed] = false;
 	    this[kOnClosed] = [];
+	    this[kWebSocketOptions] = opts?.webSocket ?? {};
+	    this[kEventSourceOptions] = opts?.eventSource ?? {};
+	  }
+
+	  get webSocketOptions () {
+	    return {
+	      maxFragments: this[kWebSocketOptions].maxFragments ?? 131072,
+	      maxPayloadSize: this[kWebSocketOptions].maxPayloadSize ?? 128 * 1024 * 1024
+	    }
+	  }
+
+	  get eventSourceOptions () {
+	    return {
+	      maxEventSize: this[kEventSourceOptions].maxEventSize ?? buffer.kStringMaxLength
+	    }
 	  }
 
 	  get destroyed () {
@@ -8832,6 +8737,7 @@ function requireClientH1 () {
 	  RequestContentLengthMismatchError,
 	  ResponseContentLengthMismatchError,
 	  RequestAbortedError,
+	  InvalidArgumentError,
 	  HeadersTimeoutError,
 	  HeadersOverflowError,
 	  SocketError,
@@ -8879,6 +8785,9 @@ function requireClientH1 () {
 	const FastBuffer = Buffer[Symbol.species];
 	const addListener = util.addListener;
 	const removeAllListeners = util.removeAllListeners;
+	const kIdleSocketValidation = Symbol('kIdleSocketValidation');
+	const kIdleSocketValidationTimeout = Symbol('kIdleSocketValidationTimeout');
+	const kSocketUsed = Symbol('kSocketUsed');
 
 	let extractBody;
 
@@ -9101,27 +9010,69 @@ function requireClientH1 () {
 
 	      const offset = llhttp.llhttp_get_error_pos(this.ptr) - currentBufferPtr;
 
-	      if (ret === constants.ERROR.PAUSED_UPGRADE) {
-	        this.onUpgrade(data.slice(offset));
-	      } else if (ret === constants.ERROR.PAUSED) {
-	        this.paused = true;
-	        socket.unshift(data.slice(offset));
-	      } else if (ret !== constants.ERROR.OK) {
-	        const ptr = llhttp.llhttp_get_error_reason(this.ptr);
-	        let message = '';
-	        /* istanbul ignore else: difficult to make a test case for */
-	        if (ptr) {
-	          const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0);
-	          message =
-	            'Response does not match the HTTP/1.1 protocol (' +
-	            Buffer.from(llhttp.memory.buffer, ptr, len).toString() +
-	            ')';
+	      if (ret !== constants.ERROR.OK) {
+	        const body = data.subarray(offset);
+
+	        if (ret === constants.ERROR.PAUSED_UPGRADE) {
+	          this.onUpgrade(body);
+	        } else if (ret === constants.ERROR.PAUSED) {
+	          this.paused = true;
+	          socket.unshift(body);
+	        } else {
+	          throw this.createError(ret, body)
 	        }
-	        throw new HTTPParserError(message, constants.ERROR[ret], data.slice(offset))
 	      }
 	    } catch (err) {
 	      util.destroy(socket, err);
 	    }
+	  }
+
+	  finish () {
+	    assert(currentParser === null);
+	    assert(this.ptr != null);
+	    assert(!this.paused);
+
+	    const { llhttp } = this;
+
+	    let ret;
+
+	    try {
+	      currentParser = this;
+	      ret = llhttp.llhttp_finish(this.ptr);
+	    } finally {
+	      currentParser = null;
+	    }
+
+	    if (ret === constants.ERROR.OK) {
+	      return null
+	    }
+
+	    if (ret === constants.ERROR.PAUSED || ret === constants.ERROR.PAUSED_UPGRADE) {
+	      this.paused = true;
+	      return null
+	    }
+
+	    return this.createError(ret, EMPTY_BUF)
+	  }
+
+	  createError (ret, data) {
+	    const { llhttp, contentLength, bytesRead } = this;
+
+	    if (contentLength && bytesRead !== parseInt(contentLength, 10)) {
+	      return new ResponseContentLengthMismatchError()
+	    }
+
+	    const ptr = llhttp.llhttp_get_error_reason(this.ptr);
+	    let message = '';
+	    if (ptr) {
+	      const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0);
+	      message =
+	        'Response does not match the HTTP/1.1 protocol (' +
+	        Buffer.from(llhttp.memory.buffer, ptr, len).toString() +
+	        ')';
+	    }
+
+	    return new HTTPParserError(message, constants.ERROR[ret], data)
 	  }
 
 	  destroy () {
@@ -9148,6 +9099,11 @@ function requireClientH1 () {
 
 	    /* istanbul ignore next: difficult to make a test case for */
 	    if (socket.destroyed) {
+	      return -1
+	    }
+
+	    if (client[kRunning] === 0) {
+	      util.destroy(socket, new SocketError('bad response', util.getSocketInfo(socket)));
 	      return -1
 	    }
 
@@ -9203,7 +9159,7 @@ function requireClientH1 () {
 	  }
 
 	  onUpgrade (head) {
-	    const { upgrade, client, socket, headers, statusCode } = this;
+	    const { upgrade, client, socket, headers, statusCode, statusText } = this;
 
 	    assert(upgrade);
 	    assert(client[kSocket] === socket);
@@ -9238,9 +9194,10 @@ function requireClientH1 () {
 	    client.emit('disconnect', client[kUrl], [client], new InformationalError('upgrade'));
 
 	    try {
-	      request.onUpgrade(statusCode, headers, socket);
-	    } catch (err) {
-	      util.destroy(socket, err);
+	      request.onUpgrade(statusCode, headers, socket, statusText);
+	    } catch (error) {
+	      util.errorRequest(client, request, error);
+	      util.destroy(socket, error);
 	    }
 
 	    client[kResume]();
@@ -9251,6 +9208,11 @@ function requireClientH1 () {
 
 	    /* istanbul ignore next: difficult to make a test case for */
 	    if (socket.destroyed) {
+	      return -1
+	    }
+
+	    if (client[kRunning] === 0) {
+	      util.destroy(socket, new SocketError('bad response', util.getSocketInfo(socket)));
 	      return -1
 	    }
 
@@ -9427,6 +9389,7 @@ function requireClientH1 () {
 	    request.onComplete(headers);
 
 	    client[kQueue][client[kRunningIdx]++] = null;
+	    socket[kSocketUsed] = true;
 
 	    if (socket[kWriting]) {
 	      assert(client[kRunning] === 0);
@@ -9485,18 +9448,22 @@ function requireClientH1 () {
 	  socket[kWriting] = false;
 	  socket[kReset] = false;
 	  socket[kBlocking] = false;
+	  socket[kIdleSocketValidation] = 0;
+	  socket[kIdleSocketValidationTimeout] = null;
+	  socket[kSocketUsed] = false;
 	  socket[kParser] = new Parser(client, socket, llhttpInstance);
 
 	  addListener(socket, 'error', function (err) {
-	    assert(err.code !== 'ERR_TLS_CERT_ALTNAME_INVALID');
-
 	    const parser = this[kParser];
 
 	    // On Mac OS, we get an ECONNRESET even if there is a full body to be forwarded
 	    // to the user.
 	    if (err.code === 'ECONNRESET' && parser.statusCode && !parser.shouldKeepAlive) {
-	      // We treat all incoming data so for as a valid response.
-	      parser.onMessageComplete();
+	      const parserErr = parser.finish();
+	      if (parserErr) {
+	        this[kError] = parserErr;
+	        this[kClient][kOnError](parserErr);
+	      }
 	      return
 	    }
 
@@ -9515,8 +9482,10 @@ function requireClientH1 () {
 	    const parser = this[kParser];
 
 	    if (parser.statusCode && !parser.shouldKeepAlive) {
-	      // We treat all incoming data so far as a valid response.
-	      parser.onMessageComplete();
+	      const parserErr = parser.finish();
+	      if (parserErr) {
+	        util.destroy(this, parserErr);
+	      }
 	      return
 	    }
 
@@ -9526,10 +9495,11 @@ function requireClientH1 () {
 	    const client = this[kClient];
 	    const parser = this[kParser];
 
+	    clearIdleSocketValidation(this);
+
 	    if (parser) {
 	      if (!this[kError] && parser.statusCode && !parser.shouldKeepAlive) {
-	        // We treat all incoming data so far as a valid response.
-	        parser.onMessageComplete();
+	        this[kError] = parser.finish() || this[kError];
 	      }
 
 	      this[kParser].destroy();
@@ -9592,7 +9562,7 @@ function requireClientH1 () {
 	      return socket.destroyed
 	    },
 	    busy (request) {
-	      if (socket[kWriting] || socket[kReset] || socket[kBlocking]) {
+	      if (socket[kWriting] || socket[kReset] || socket[kBlocking] || socket[kIdleSocketValidation] === 1) {
 	        return true
 	      }
 
@@ -9630,6 +9600,39 @@ function requireClientH1 () {
 	  }
 	}
 
+	function clearIdleSocketValidation (socket) {
+	  if (socket[kIdleSocketValidationTimeout]) {
+	    clearImmediate(socket[kIdleSocketValidationTimeout]);
+	    socket[kIdleSocketValidationTimeout] = null;
+	  }
+
+	  socket[kIdleSocketValidation] = 0;
+	}
+
+	function scheduleIdleSocketValidation (client, socket) {
+	  socket[kIdleSocketValidation] = 1;
+	  // Yield to the check phase (after poll) so unsolicited bytes / FIN / RST
+	  // already pending on this idle keep-alive socket are processed before the
+	  // next request is written (GHSA-35p6-xmwp-9g52).
+	  //
+	  // setTimeout(0) pays Node's ~1ms timer floor on every sequential reuse
+	  // (#5493). setImmediate avoids that, but an *unref'd* Immediate lets poll
+	  // block for ~500ms when the event loop is otherwise idle (#5600 / #5606).
+	  // A ref'd Immediate both keeps the pending request alive and makes poll
+	  // return immediately — the hybrid those issues asked for.
+	  socket[kIdleSocketValidationTimeout] = setImmediate(() => {
+	    socket[kIdleSocketValidationTimeout] = null;
+	    socket[kIdleSocketValidation] = 2;
+
+	    if (client[kSocket] === socket && !socket.destroyed) {
+	      client[kResume]();
+	    }
+	  });
+	}
+
+	/**
+	 * @param {import('./client.js')} client
+	 */
 	function resumeH1 (client) {
 	  const socket = client[kSocket];
 
@@ -9642,6 +9645,32 @@ function requireClientH1 () {
 	    } else if (socket[kNoRef] && socket.ref) {
 	      socket.ref();
 	      socket[kNoRef] = false;
+	    }
+
+	    if (client[kRunning] === 0 && client[kPending] > 0 && socket[kSocketUsed]) {
+	      if (socket[kIdleSocketValidation] === 0) {
+	        scheduleIdleSocketValidation(client, socket);
+	        socket[kParser].readMore();
+	        if (socket.destroyed) {
+	          return
+	        }
+	        return
+	      }
+
+	      if (socket[kIdleSocketValidation] === 1) {
+	        socket[kParser].readMore();
+	        if (socket.destroyed) {
+	          return
+	        }
+	        return
+	      }
+	    }
+
+	    if (client[kRunning] === 0) {
+	      socket[kParser].readMore();
+	      if (socket.destroyed) {
+	        return
+	      }
 	    }
 
 	    if (client[kSize] === 0) {
@@ -9699,8 +9728,16 @@ function requireClientH1 () {
 	    }
 	    body = bodyStream.stream;
 	    contentLength = bodyStream.length;
-	  } else if (util.isBlobLike(body) && request.contentType == null && body.type) {
-	    headers.push('content-type', body.type);
+	  } else if (util.isBlobLike(body) && request.contentType == null) {
+	    const contentType = body.type;
+	    if (contentType) {
+	      const contentTypeValue = `${contentType}`;
+	      if (!util.isValidHeaderValue(contentTypeValue)) {
+	        util.errorRequest(client, request, new InvalidArgumentError('invalid content-type header'));
+	        return false
+	      }
+	      headers.push('content-type', contentTypeValue);
+	    }
 	  }
 
 	  if (body && typeof body.read === 'function') {
@@ -9737,13 +9774,24 @@ function requireClientH1 () {
 	  }
 
 	  const socket = client[kSocket];
+	  clearIdleSocketValidation(socket);
 
-	  const abort = (err) => {
-	    if (request.aborted || request.completed) {
+	  /**
+	   * @param {Error} [error]
+	   */
+	  const abort = (error) => {
+	    if (request.aborted) {
 	      return
 	    }
 
-	    util.errorRequest(client, request, err || new RequestAbortedError());
+	    if (request.completed) {
+	      if (request.upgrade || request.method === 'CONNECT') {
+	        util.destroy(socket, new InformationalError('aborted'));
+	      }
+	      return
+	    }
+
+	    util.errorRequest(client, request, error || new RequestAbortedError());
 
 	    util.destroy(body);
 	    util.destroy(socket, new InformationalError('aborted'));
@@ -10201,6 +10249,7 @@ function requireClientH2 () {
 	hasRequiredClientH2 = 1;
 
 	const assert = __require$h();
+	const { errorMonitor } = __require$a();
 	const { pipeline } = __require$e();
 	const util = requireUtil$7();
 	const {
@@ -10277,6 +10326,15 @@ function requireClientH2 () {
 	  return result
 	}
 
+	/**
+	 * @param {import('node:http2').IncomingHttpHeaders} headers
+	 * @returns {Buffer[]}
+	 */
+	function parseH2ResponseHeaders (headers) {
+	  const { [HTTP2_HEADER_STATUS]: _statusCode, ...realHeaders } = headers;
+	  return parseH2Headers(realHeaders)
+	}
+
 	async function connectH2 (client, socket) {
 	  client[kSocket] = socket;
 
@@ -10326,8 +10384,6 @@ function requireClientH2 () {
 	  socket[kHTTP2Session] = session;
 
 	  util.addListener(socket, 'error', function (err) {
-	    assert(err.code !== 'ERR_TLS_CERT_ALTNAME_INVALID');
-
 	    this[kError] = err;
 
 	    this[kClient][kOnError](err);
@@ -10401,8 +10457,6 @@ function requireClientH2 () {
 	}
 
 	function onHttp2SessionError (err) {
-	  assert(err.code !== 'ERR_TLS_CERT_ALTNAME_INVALID');
-
 	  this[kSocket][kError] = err;
 	  this[kClient][kOnError](err);
 	}
@@ -10497,22 +10551,32 @@ function requireClientH2 () {
 	  headers[HTTP2_HEADER_AUTHORITY] = host || `${hostname}${port ? `:${port}` : ''}`;
 	  headers[HTTP2_HEADER_METHOD] = method;
 
-	  const abort = (err) => {
-	    if (request.aborted || request.completed) {
+	  /**
+	   * @param {Error} [error]
+	   */
+	  const abort = (error) => {
+	    if (request.aborted) {
 	      return
 	    }
 
-	    err = err || new RequestAbortedError();
+	    if (request.completed) {
+	      if (method === 'CONNECT' && stream != null) {
+	        util.destroy(stream, error || new RequestAbortedError());
+	      }
+	      return
+	    }
 
-	    util.errorRequest(client, request, err);
+	    error = error || new RequestAbortedError();
+
+	    util.errorRequest(client, request, error);
 
 	    if (stream != null) {
-	      util.destroy(stream, err);
+	      util.destroy(stream, error);
 	    }
 
 	    // We do not destroy the socket as we can continue using the session
 	    // the stream get's destroyed and the session remains to create new streams
-	    util.destroy(body, err);
+	    util.destroy(body, error);
 	    client[kQueue][client[kRunningIdx]++] = null;
 	    client[kResume]();
 	  };
@@ -10531,25 +10595,57 @@ function requireClientH2 () {
 
 	  if (method === 'CONNECT') {
 	    session.ref();
-	    // We are already connected, streams are pending, first request
-	    // will create a new stream. We trigger a request to create the stream and wait until
-	    // `ready` event is triggered
 	    // We disabled endStream to allow the user to write to the stream
 	    stream = session.request(headers, { endStream: false, signal });
+	    let upgradeResponseFinished = false;
 
-	    if (stream.id && !stream.pending) {
-	      request.onUpgrade(null, null, stream);
-	      ++session[kOpenStreams];
-	      client[kQueue][client[kRunningIdx]++] = null;
-	    } else {
-	      stream.once('ready', () => {
+	    /**
+	     * @param {import('node:http2').IncomingHttpHeaders} headers
+	     */
+	    const onResponse = (headers) => {
+	      upgradeResponseFinished = true;
+	      stream.off(errorMonitor, onUpgradeError);
+	      request.onUpgradeResponse(Number(headers[HTTP2_HEADER_STATUS]), headers, parseH2ResponseHeaders);
+	    };
+
+	    /**
+	     * @param {Error} error
+	     */
+	    const onUpgradeError = (error) => {
+	      upgradeResponseFinished = true;
+	      stream.off('response', onResponse);
+	      request.onUpgradeError(error);
+	    };
+
+	    const onReady = () => {
+	      try {
 	        request.onUpgrade(null, null, stream);
-	        ++session[kOpenStreams];
-	        client[kQueue][client[kRunningIdx]++] = null;
-	      });
-	    }
+	      } catch (error) {
+	        stream.off('response', onResponse);
+	        abort(error);
+	        return
+	      }
+
+	      if (request.aborted) {
+	        return
+	      }
+
+	      stream.off('error', abort);
+	      stream.once(errorMonitor, onUpgradeError);
+	      client[kQueue][client[kRunningIdx]++] = null;
+	    };
+
+	    stream.once('response', onResponse);
+	    stream.once('error', abort);
+	    ++session[kOpenStreams];
+	    onReady();
 
 	    stream.once('close', () => {
+	      if (!upgradeResponseFinished && request.completed) {
+	        stream.off('response', onResponse);
+	        stream.off(errorMonitor, onUpgradeError);
+	        request.onUpgradeError(new InformationalError(`HTTP/2: "stream error" received - code ${stream.rstCode}`));
+	      }
 	      session[kOpenStreams] -= 1;
 	      if (session[kOpenStreams] === 0) session.unref();
 	    });
@@ -11307,9 +11403,11 @@ function requireClient () {
 	    autoSelectFamilyAttemptTimeout,
 	    // h2
 	    maxConcurrentStreams,
-	    allowH2
+	    allowH2,
+	    webSocket,
+	    eventSource
 	  } = {}) {
-	    super();
+	    super({ webSocket, eventSource });
 
 	    if (keepAlive !== undefined) {
 	      throw new InvalidArgumentError('unsupported keepAlive, use pipelining=0 instead')
@@ -12016,8 +12114,8 @@ function requirePoolBase () {
 	const kStats = Symbol('stats');
 
 	class PoolBase extends DispatcherBase {
-	  constructor () {
-	    super();
+	  constructor (opts) {
+	    super(opts);
 
 	    this[kQueue] = new FixedQueue();
 	    this[kClients] = [];
@@ -12236,8 +12334,6 @@ function requirePool () {
 	    allowH2,
 	    ...options
 	  } = {}) {
-	    super();
-
 	    if (connections != null && (!Number.isFinite(connections) || connections < 0)) {
 	      throw new InvalidArgumentError('invalid connections')
 	    }
@@ -12261,6 +12357,8 @@ function requirePool () {
 	        ...connect
 	      });
 	    }
+
+	    super(options);
 
 	    this[kInterceptors] = options.interceptors?.Pool && Array.isArray(options.interceptors.Pool)
 	      ? options.interceptors.Pool
@@ -12554,9 +12652,7 @@ function requireAgent () {
 	}
 
 	class Agent extends DispatcherBase {
-	  constructor ({ factory = defaultFactory, maxRedirections = 0, connect, ...options } = {}) {
-	    super();
-
+	  constructor ({ factory = defaultFactory, maxRedirections = 0, connect, tls, ...options } = {}) {
 	    if (typeof factory !== 'function') {
 	      throw new InvalidArgumentError('factory must be a function.')
 	    }
@@ -12569,15 +12665,21 @@ function requireAgent () {
 	      throw new InvalidArgumentError('maxRedirections must be a positive number')
 	    }
 
+	    super(options);
+
 	    if (connect && typeof connect !== 'function') {
 	      connect = { ...connect };
+	    }
+
+	    if (tls && typeof tls !== 'function') {
+	      tls = { ...tls };
 	    }
 
 	    this[kInterceptors] = options.interceptors?.Agent && Array.isArray(options.interceptors.Agent)
 	      ? options.interceptors.Agent
 	      : [createRedirectInterceptor({ maxRedirections })];
 
-	    this[kOptions] = { ...util.deepClone(options), connect };
+	    this[kOptions] = { ...util.deepClone(options), connect, tls };
 	    this[kOptions].interceptors = options.interceptors
 	      ? { ...options.interceptors }
 	      : undefined;
@@ -13136,6 +13238,28 @@ function requireRetryHandler () {
 	  return new Date(retryAfter).getTime() - current
 	}
 
+	function validatePartialResponseContentLength (headers, range, statusCode, retryCount) {
+	  const contentLength = headers['content-length'];
+	  if (contentLength == null) {
+	    return null
+	  }
+
+	  if (!Number.isFinite(range.start) || !Number.isFinite(range.end)) {
+	    return null
+	  }
+
+	  const length = Number(contentLength);
+	  const expectedLength = range.end - range.start + 1;
+	  if (!Number.isFinite(length) || length !== expectedLength) {
+	    return new RequestRetryError('Content-Length mismatch', statusCode, {
+	      headers,
+	      data: { count: retryCount }
+	    })
+	  }
+
+	  return null
+	}
+
 	class RetryHandler {
 	  constructor (opts, handlers) {
 	    const { retryOptions, ...dispatchOpts } = opts;
@@ -13189,6 +13313,7 @@ function requireRetryHandler () {
 	    this.end = null;
 	    this.etag = null;
 	    this.resume = null;
+	    this.headersSent = false;
 
 	    // Handle possible onConnect duplication
 	    this.handler.onConnect(reason => {
@@ -13199,6 +13324,20 @@ function requireRetryHandler () {
 	        this.reason = reason;
 	      }
 	    });
+	  }
+
+	  checkpointResponseEnd (headers, resume) {
+	    if (this.end == null && this.opts.method !== 'HEAD') {
+	      const contentLength = headers['content-length'];
+	      this.end = contentLength != null ? Number(contentLength) - 1 : null;
+
+	      assert(
+	        this.end == null || Number.isFinite(this.end),
+	        'invalid content-length'
+	      );
+	    }
+
+	    this.resume = this.end != null ? resume : null;
 	  }
 
 	  onRequestSent () {
@@ -13289,7 +13428,12 @@ function requireRetryHandler () {
 	    this.retryCount += 1;
 
 	    if (statusCode >= 300) {
-	      if (this.retryOpts.statusCodes.includes(statusCode) === false) {
+	      // Only expose a response if no earlier attempt has reached the caller.
+	      // Otherwise abort this attempt so the error settles the existing body
+	      // instead of replacing it with a new response.
+	      if (!this.headersSent && this.retryOpts.statusCodes.includes(statusCode) === false) {
+	        this.headersSent = true;
+	        this.checkpointResponseEnd(headers, resume);
 	        return this.handler.onHeaders(
 	          statusCode,
 	          rawHeaders,
@@ -13350,10 +13494,23 @@ function requireRetryHandler () {
 	        return false
 	      }
 
+	      const contentLengthError = validatePartialResponseContentLength(headers, contentRange, statusCode, this.retryCount);
+	      if (contentLengthError != null) {
+	        this.abort(contentLengthError);
+	        return false
+	      }
+
 	      const { start, size, end = size - 1 } = contentRange;
 
-	      assert(this.start === start, 'content-range mismatch');
-	      assert(this.end == null || this.end === end, 'content-range mismatch');
+	      if (this.start !== start || (this.end != null && this.end !== end)) {
+	        this.abort(
+	          new RequestRetryError('Content-Range mismatch', statusCode, {
+	            headers,
+	            data: { count: this.retryCount }
+	          })
+	        );
+	        return false
+	      }
 
 	      this.resume = resume;
 	      return true
@@ -13365,12 +13522,19 @@ function requireRetryHandler () {
 	        const range = parseRangeHeader(headers['content-range']);
 
 	        if (range == null) {
+	          this.headersSent = true;
 	          return this.handler.onHeaders(
 	            statusCode,
 	            rawHeaders,
 	            resume,
 	            statusMessage
 	          )
+	        }
+
+	        const contentLengthError = validatePartialResponseContentLength(headers, range, statusCode, this.retryCount);
+	        if (contentLengthError != null) {
+	          this.abort(contentLengthError);
+	          return false
 	        }
 
 	        const { start, size, end = size - 1 } = range;
@@ -13397,6 +13561,7 @@ function requireRetryHandler () {
 	      );
 
 	      this.resume = resume;
+	      this.headersSent = true;
 	      this.etag = headers.etag != null ? headers.etag : null;
 
 	      // Weak etags are not useful for comparison nor cache
@@ -13436,7 +13601,7 @@ function requireRetryHandler () {
 	  }
 
 	  onError (err) {
-	    if (this.aborted || isDisturbed(this.opts.body)) {
+	    if (this.aborted || isDisturbed(this.opts.body) || (this.headersSent && this.resume == null)) {
 	      return this.handler.onError(err)
 	    }
 
@@ -21069,8 +21234,10 @@ function requireFetch () {
 	  // 19. Run these steps in parallel:
 
 	  //    1. Run these steps, but abort when fetchParams is canceled:
-	  fetchParams.controller.onAborted = onAborted;
-	  fetchParams.controller.on('terminated', onAborted);
+	  if (!fetchParams.controller.resume) {
+	    fetchParams.controller.on('terminated', onAborted);
+	  }
+
 	  fetchParams.controller.resume = async () => {
 	    // 1. While true
 	    while (true) {
@@ -21239,8 +21406,6 @@ function requireFetch () {
 	          }
 	          location = headersList.get('location', true);
 
-	          this.body = new Readable({ read: resume });
-
 	          const decoders = [];
 
 	          const willFollow = location && request.redirect === 'follow' &&
@@ -21258,7 +21423,7 @@ function requireFetch () {
 	            // CVE fix similar to urllib3 (GHSA-gm62-xv2j-4w53) and curl (CVE-2022-32206).
 	            const maxContentEncodings = 5;
 	            if (codings.length > maxContentEncodings) {
-	              reject(new Error(`too many content-encodings in response: ${codings.length}, maximum allowed is ${maxContentEncodings}`));
+	              this.abort(new Error(`too many content-encodings in response: ${codings.length}, maximum allowed is ${maxContentEncodings}`));
 	              return true
 	            }
 
@@ -21290,6 +21455,8 @@ function requireFetch () {
 	              }
 	            }
 	          }
+
+	          this.body = new Readable({ read: resume });
 
 	          const onError = this.onError.bind(this);
 
@@ -21335,10 +21502,6 @@ function requireFetch () {
 	        onComplete () {
 	          if (this.abort) {
 	            fetchParams.controller.off('terminated', this.abort);
-	          }
-
-	          if (fetchParams.controller.onAborted) {
-	            fetchParams.controller.off('terminated', fetchParams.controller.onAborted);
 	          }
 
 	          fetchParams.controller.ended = true;
@@ -23770,7 +23933,7 @@ function requireUtil$2 () {
 
 	    if (
 	      code < 0x20 || // exclude CTLs (0-31)
-	      code === 0x7F || // DEL
+	      code > 0x7E || // exclude DEL and non-ascii
 	      code === 0x3B // ;
 	    ) {
 	      throw new Error('Invalid cookie path')
@@ -23779,16 +23942,80 @@ function requireUtil$2 () {
 	}
 
 	/**
-	 * I have no idea why these values aren't allowed to be honest,
-	 * but Deno tests these. - Khafra
+	 * <let-dig> ::= <letter> | <digit>
+	 *
+	 * <letter> ::= any one of the 52 alphabetic characters A through Z in
+	 * upper case and a through z in lower case
+	 *
+	 * <digit> ::= any one of the ten digits 0 through 9r
+	 *
+	 * @see https://www.rfc-editor.org/rfc/rfc1034#section-3.5
+	 * @param {number} code
+	 */
+	function isLetterOrDigit (code) {
+	  return (
+	    (code >= 0x30 && code <= 0x39) || // 0-9
+	    (code >= 0x41 && code <= 0x5A) || // A-Z
+	    (code >= 0x61 && code <= 0x7A) // a-z
+	  )
+	}
+
+	/**
+	 * Validates a cookie domain against the "preferred name syntax".
+	 *
+	 * <domain>      ::= <subdomain> | " "
+	 * <subdomain>   ::= <label> | <subdomain> "." <label>
+	 * <label>       ::= <let-dig> [ [ <ldh-str> ] <let-dig> ]
+	 * <ldh-str>     ::= <let-dig-hyp> | <let-dig-hyp> <ldh-str>
+	 * <let-dig-hyp> ::= <let-dig> | "-"
+	 *
+	 * @see https://www.rfc-editor.org/rfc/rfc1034#section-3.5
+	 * @see https://www.rfc-editor.org/rfc/rfc1123#section-2.1
+	 * @see https://www.rfc-editor.org/rfc/rfc1035#section-2.3.4
 	 * @param {string} domain
 	 */
 	function validateCookieDomain (domain) {
-	  if (
-	    domain.startsWith('-') ||
-	    domain.endsWith('.') ||
-	    domain.endsWith('-')
-	  ) {
+	  // <domain> ::= <subdomain> | " "
+	  if (domain === ' ') {
+	    return
+	  }
+
+	  if (domain.length > 255) {
+	    throw new Error('Invalid cookie domain')
+	  }
+
+	  let labelLength = 0;
+
+	  for (let i = 0; i < domain.length; ++i) {
+	    const code = domain.charCodeAt(i);
+
+	    if (code === 0x2E) {
+	      if (labelLength === 0) {
+	        throw new Error('Invalid cookie domain')
+	      }
+
+	      if (domain.charCodeAt(i - 1) === 0x2D) { // "-"
+	        throw new Error('Invalid cookie domain')
+	      }
+
+	      labelLength = 0;
+	      continue
+	    }
+
+	    if (labelLength === 0 && !isLetterOrDigit(code)) {
+	      throw new Error('Invalid cookie domain')
+	    }
+
+	    if (!isLetterOrDigit(code) && code !== 0x2D) { // "-"
+	      throw new Error('Invalid cookie domain')
+	    }
+
+	    if (++labelLength > 63) {
+	      throw new Error('Invalid cookie domain')
+	    }
+	  }
+
+	  if (labelLength === 0 || domain.charCodeAt(domain.length - 1) === 0x2D) { // "-"
 	    throw new Error('Invalid cookie domain')
 	  }
 	}
@@ -23931,7 +24158,13 @@ function requireUtil$2 () {
 
 	    const [key, ...value] = part.split('=');
 
-	    out.push(`${key.trim()}=${value.join('=')}`);
+	    const trimmedKey = key.trim();
+	    const joinedValue = value.join('=');
+
+	    validateCookieName(trimmedKey);
+	    validateCookieValue(joinedValue);
+
+	    out.push(`${trimmedKey}=${joinedValue}`);
 	  }
 
 	  return out.join('; ')
@@ -24230,32 +24463,25 @@ function requireParse () {
 	    // If the attribute-name case-insensitively matches the string
 	    // "SameSite", the user agent MUST process the cookie-av as follows:
 
-	    // 1. Let enforcement be "Default".
-	    let enforcement = 'Default';
-
 	    const attributeValueLowercase = attributeValue.toLowerCase();
-	    // 2. If cookie-av's attribute-value is a case-insensitive match for
-	    //    "None", set enforcement to "None".
-	    if (attributeValueLowercase.includes('none')) {
-	      enforcement = 'None';
-	    }
 
-	    // 3. If cookie-av's attribute-value is a case-insensitive match for
-	    //    "Strict", set enforcement to "Strict".
-	    if (attributeValueLowercase.includes('strict')) {
-	      enforcement = 'Strict';
+	    // 1. If cookie-av's attribute-value is a case-insensitive match for
+	    //    "None", append an attribute to the cookie-attribute-list with an
+	    //    attribute-name of "SameSite" and an attribute-value of "None".
+	    if (attributeValueLowercase === 'none') {
+	      cookieAttributeList.sameSite = 'None';
+	    } else if (attributeValueLowercase === 'strict') {
+	      // 2. If cookie-av's attribute-value is a case-insensitive match for
+	      //    "Strict", append an attribute to the cookie-attribute-list with
+	      //    an attribute-name of "SameSite" and an attribute-value of
+	      //    "Strict".
+	      cookieAttributeList.sameSite = 'Strict';
+	    } else if (attributeValueLowercase === 'lax') {
+	      // 3. If cookie-av's attribute-value is a case-insensitive match for
+	      //    "Lax", append an attribute to the cookie-attribute-list with an
+	      //    attribute-name of "SameSite" and an attribute-value of "Lax".
+	      cookieAttributeList.sameSite = 'Lax';
 	    }
-
-	    // 4. If cookie-av's attribute-value is a case-insensitive match for
-	    //    "Lax", set enforcement to "Lax".
-	    if (attributeValueLowercase.includes('lax')) {
-	      enforcement = 'Lax';
-	    }
-
-	    // 5. Append an attribute to the cookie-attribute-list with an
-	    //    attribute-name of "SameSite" and an attribute-value of
-	    //    enforcement.
-	    cookieAttributeList.sameSite = enforcement;
 	  } else {
 	    cookieAttributeList.unparsed ??= [];
 
@@ -25169,6 +25395,12 @@ function requireUtil$1 () {
 	 * @param {string} value
 	 */
 	function isValidClientWindowBits (value) {
+	  // Must have at least one character
+	  if (value.length === 0) {
+	    return false
+	  }
+
+	  // Check all characters are ASCII digits
 	  for (let i = 0; i < value.length; i++) {
 	    const byte = value.charCodeAt(i);
 
@@ -25177,7 +25409,9 @@ function requireUtil$1 () {
 	    }
 	  }
 
-	  return true
+	  // Check numeric range: zlib requires windowBits in range 8-15
+	  const num = Number.parseInt(value, 10);
+	  return num >= 8 && num <= 15
 	}
 
 	// https://nodejs.org/api/intl.html#detecting-internationalization-support
@@ -25521,7 +25755,7 @@ function requireConnection () {
 	        // is specified, the server needs to include the same field and one of
 	        // the selected subprotocol values in its response for the connection to
 	        // be established.
-	        if (!requestProtocols.includes(secProtocol)) {
+	        if (requestProtocols === null || !requestProtocols.includes(secProtocol)) {
 	          failWebsocketConnection(ws, 'Protocol was not set in the opening handshake.');
 	          return
 	        }
@@ -25707,6 +25941,7 @@ function requirePermessageDeflate () {
 
 	const { createInflateRaw, Z_DEFAULT_WINDOWBITS } = __require$7();
 	const { isValidClientWindowBits } = requireUtil$1();
+	const { MessageSizeExceededError } = requireErrors();
 
 	const tail = Buffer.from([0x00, 0x00, 0xff, 0xff]);
 	const kBuffer = Symbol('kBuffer');
@@ -25718,17 +25953,29 @@ function requirePermessageDeflate () {
 
 	  #options = {}
 
-	  constructor (extensions) {
+	  #maxPayloadSize = 0
+
+	  /**
+	   * @param {Map<string, string>} extensions
+	   */
+	  constructor (extensions, options) {
 	    this.#options.serverNoContextTakeover = extensions.has('server_no_context_takeover');
 	    this.#options.serverMaxWindowBits = extensions.get('server_max_window_bits');
+
+	    this.#maxPayloadSize = options.maxPayloadSize;
 	  }
 
+	  /**
+	   * Decompress a compressed payload.
+	   * @param {Buffer} chunk Compressed data
+	   * @param {boolean} fin Final fragment flag
+	   * @param {Function} callback Callback function
+	   */
 	  decompress (chunk, fin, callback) {
 	    // An endpoint uses the following algorithm to decompress a message.
 	    // 1.  Append 4 octets of 0x00 0x00 0xff 0xff to the tail end of the
 	    //     payload of the message.
 	    // 2.  Decompress the resulting data using DEFLATE.
-
 	    if (!this.#inflate) {
 	      let windowBits = Z_DEFAULT_WINDOWBITS;
 
@@ -25741,13 +25988,31 @@ function requirePermessageDeflate () {
 	        windowBits = Number.parseInt(this.#options.serverMaxWindowBits);
 	      }
 
-	      this.#inflate = createInflateRaw({ windowBits });
+	      try {
+	        this.#inflate = createInflateRaw({ windowBits });
+	      } catch (err) {
+	        callback(err);
+	        return
+	      }
 	      this.#inflate[kBuffer] = [];
 	      this.#inflate[kLength] = 0;
 
 	      this.#inflate.on('data', (data) => {
-	        this.#inflate[kBuffer].push(data);
 	        this.#inflate[kLength] += data.length;
+
+	        if (this.#maxPayloadSize > 0 && this.#inflate[kLength] > this.#maxPayloadSize) {
+	          callback(new MessageSizeExceededError());
+	          // The inflater may still hold buffered input that can emit a late
+	          // zlib error. Remove the data listener, then deterministically stop
+	          // the stream so a subsequent 'error' cannot fire without a listener
+	          // (which would terminate the process as an unhandled error event).
+	          this.#inflate.removeAllListeners();
+	          this.#inflate.destroy();
+	          this.#inflate = null;
+	          return
+	        }
+
+	        this.#inflate[kBuffer].push(data);
 	      });
 
 	      this.#inflate.on('error', (err) => {
@@ -25762,6 +26027,10 @@ function requirePermessageDeflate () {
 	    }
 
 	    this.#inflate.flush(() => {
+	      if (!this.#inflate) {
+	        return
+	      }
+
 	      const full = Buffer.concat(this.#inflate[kBuffer], this.#inflate[kLength]);
 
 	      this.#inflate[kBuffer].length = 0;
@@ -25801,6 +26070,12 @@ function requireReceiver () {
 	const { WebsocketFrameSend } = requireFrame();
 	const { closeWebSocketConnection } = requireConnection();
 	const { PerMessageDeflate } = requirePermessageDeflate();
+	const { MessageSizeExceededError } = requireErrors();
+
+	function failWebsocketConnectionWithCode (ws, code, reason) {
+	  closeWebSocketConnection(ws, code, reason, Buffer.byteLength(reason));
+	  failWebsocketConnection(ws, reason);
+	}
 
 	// This code was influenced by ws released under the MIT license.
 	// Copyright (c) 2011 Einar Otto Stangvik <einaros@gmail.com>
@@ -25809,6 +26084,7 @@ function requireReceiver () {
 
 	class ByteParser extends Writable {
 	  #buffers = []
+	  #fragmentsBytes = 0
 	  #byteOffset = 0
 	  #loop = false
 
@@ -25820,14 +26096,27 @@ function requireReceiver () {
 	  /** @type {Map<string, PerMessageDeflate>} */
 	  #extensions
 
-	  constructor (ws, extensions) {
+	  /** @type {number} */
+	  #maxFragments
+
+	  /** @type {number} */
+	  #maxPayloadSize
+
+	  /**
+	   * @param {import('./websocket').WebSocket} ws
+	   * @param {Map<string, string>|null} extensions
+	   * @param {{ maxFragments?: number, maxPayloadSize?: number }} [options]
+	   */
+	  constructor (ws, extensions, options = {}) {
 	    super();
 
 	    this.ws = ws;
 	    this.#extensions = extensions == null ? new Map() : extensions;
+	    this.#maxFragments = options.maxFragments ?? 0;
+	    this.#maxPayloadSize = options.maxPayloadSize ?? 0;
 
 	    if (this.#extensions.has('permessage-deflate')) {
-	      this.#extensions.set('permessage-deflate', new PerMessageDeflate(extensions));
+	      this.#extensions.set('permessage-deflate', new PerMessageDeflate(extensions, options));
 	    }
 	  }
 
@@ -25841,6 +26130,19 @@ function requireReceiver () {
 	    this.#loop = true;
 
 	    this.run(callback);
+	  }
+
+	  #validatePayloadLength () {
+	    if (
+	      this.#maxPayloadSize > 0 &&
+	      !isControlFrame(this.#info.opcode) &&
+	      this.#info.payloadLength + this.#fragmentsBytes > this.#maxPayloadSize
+	    ) {
+	      failWebsocketConnectionWithCode(this.ws, 1009, 'Payload size exceeds maximum allowed size');
+	      return false
+	    }
+
+	    return true
 	  }
 
 	  /**
@@ -25931,6 +26233,10 @@ function requireReceiver () {
 	        if (payloadLength <= 125) {
 	          this.#info.payloadLength = payloadLength;
 	          this.#state = parserStates.READ_DATA;
+
+	          if (!this.#validatePayloadLength()) {
+	            return
+	          }
 	        } else if (payloadLength === 126) {
 	          this.#state = parserStates.PAYLOADLENGTH_16;
 	        } else if (payloadLength === 127) {
@@ -25955,6 +26261,10 @@ function requireReceiver () {
 
 	        this.#info.payloadLength = buffer.readUInt16BE(0);
 	        this.#state = parserStates.READ_DATA;
+
+	        if (!this.#validatePayloadLength()) {
+	          return
+	        }
 	      } else if (this.#state === parserStates.PAYLOADLENGTH_64) {
 	        if (this.#byteOffset < 8) {
 	          return callback()
@@ -25962,6 +26272,7 @@ function requireReceiver () {
 
 	        const buffer = this.consume(8);
 	        const upper = buffer.readUInt32BE(0);
+	        const lower = buffer.readUInt32BE(4);
 
 	        // 2^31 is the maximum bytes an arraybuffer can contain
 	        // on 32-bit systems. Although, on 64-bit systems, this is
@@ -25969,15 +26280,17 @@ function requireReceiver () {
 	        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Invalid_array_length
 	        // https://source.chromium.org/chromium/chromium/src/+/main:v8/src/common/globals.h;drc=1946212ac0100668f14eb9e2843bdd846e510a1e;bpv=1;bpt=1;l=1275
 	        // https://source.chromium.org/chromium/chromium/src/+/main:v8/src/objects/js-array-buffer.h;l=34;drc=1946212ac0100668f14eb9e2843bdd846e510a1e
-	        if (upper > 2 ** 31 - 1) {
+	        if (upper !== 0 || lower > 2 ** 31 - 1) {
 	          failWebsocketConnection(this.ws, 'Received payload length > 2^31 bytes.');
 	          return
 	        }
 
-	        const lower = buffer.readUInt32BE(4);
-
-	        this.#info.payloadLength = (upper << 8) + lower;
+	        this.#info.payloadLength = lower;
 	        this.#state = parserStates.READ_DATA;
+
+	        if (!this.#validatePayloadLength()) {
+	          return
+	        }
 	      } else if (this.#state === parserStates.READ_DATA) {
 	        if (this.#byteOffset < this.#info.payloadLength) {
 	          return callback()
@@ -25988,44 +26301,74 @@ function requireReceiver () {
 	        if (isControlFrame(this.#info.opcode)) {
 	          this.#loop = this.parseControlFrame(body);
 	          this.#state = parserStates.INFO;
+
+	          // If the automatic PONG/CLOSE reply filled the socket's write buffer,
+	          // stop parsing and resume on drain so a PING flood cannot grow the
+	          // outbound queue without bound.
+	          const socket = this.ws[kResponse].socket;
+	          if (this.#loop && socket.writableNeedDrain) {
+	            this.#loop = false;
+	            socket.once('drain', () => {
+	              if (this.destroyed) return
+	              this.#loop = true;
+	              this.run(callback);
+	            });
+	            return
+	          }
 	        } else {
 	          if (!this.#info.compressed) {
-	            this.#fragments.push(body);
+	            if (!this.writeFragments(body)) {
+	              return
+	            }
+
+	            if (this.#maxPayloadSize > 0 && this.#fragmentsBytes > this.#maxPayloadSize) {
+	              failWebsocketConnectionWithCode(this.ws, 1009, new MessageSizeExceededError().message);
+	              return
+	            }
 
 	            // If the frame is not fragmented, a message has been received.
 	            // If the frame is fragmented, it will terminate with a fin bit set
 	            // and an opcode of 0 (continuation), therefore we handle that when
 	            // parsing continuation frames, not here.
 	            if (!this.#info.fragmented && this.#info.fin) {
-	              const fullMessage = Buffer.concat(this.#fragments);
-	              websocketMessageReceived(this.ws, this.#info.binaryType, fullMessage);
-	              this.#fragments.length = 0;
+	              websocketMessageReceived(this.ws, this.#info.binaryType, this.consumeFragments());
 	            }
 
 	            this.#state = parserStates.INFO;
 	          } else {
-	            this.#extensions.get('permessage-deflate').decompress(body, this.#info.fin, (error, data) => {
-	              if (error) {
-	                closeWebSocketConnection(this.ws, 1007, error.message, error.message.length);
-	                return
-	              }
+	            this.#extensions.get('permessage-deflate').decompress(
+	              body,
+	              this.#info.fin,
+	              (error, data) => {
+	                if (error) {
+	                  const code = error instanceof MessageSizeExceededError ? 1009 : 1007;
+	                  failWebsocketConnectionWithCode(this.ws, code, error.message);
+	                  return
+	                }
 
-	              this.#fragments.push(data);
+	                if (!this.writeFragments(data)) {
+	                  return
+	                }
 
-	              if (!this.#info.fin) {
-	                this.#state = parserStates.INFO;
+	                if (this.#maxPayloadSize > 0 && this.#fragmentsBytes > this.#maxPayloadSize) {
+	                  failWebsocketConnectionWithCode(this.ws, 1009, new MessageSizeExceededError().message);
+	                  return
+	                }
+
+	                if (!this.#info.fin) {
+	                  this.#state = parserStates.INFO;
+	                  this.#loop = true;
+	                  this.run(callback);
+	                  return
+	                }
+
+	                websocketMessageReceived(this.ws, this.#info.binaryType, this.consumeFragments());
+
 	                this.#loop = true;
+	                this.#state = parserStates.INFO;
 	                this.run(callback);
-	                return
 	              }
-
-	              websocketMessageReceived(this.ws, this.#info.binaryType, Buffer.concat(this.#fragments));
-
-	              this.#loop = true;
-	              this.#state = parserStates.INFO;
-	              this.#fragments.length = 0;
-	              this.run(callback);
-	            });
+	            );
 
 	            this.#loop = false;
 	            break
@@ -26075,6 +26418,35 @@ function requireReceiver () {
 	    this.#byteOffset -= n;
 
 	    return buffer
+	  }
+
+	  writeFragments (fragment) {
+	    if (
+	      this.#maxFragments > 0 &&
+	      this.#fragments.length === this.#maxFragments
+	    ) {
+	      failWebsocketConnectionWithCode(this.ws, 1008, 'Too many message fragments');
+	      return false
+	    }
+
+	    this.#fragmentsBytes += fragment.length;
+	    this.#fragments.push(fragment);
+	    return true
+	  }
+
+	  consumeFragments () {
+	    const fragments = this.#fragments;
+
+	    if (fragments.length === 1) {
+	      this.#fragmentsBytes = 0;
+	      return fragments.shift()
+	    }
+
+	    const output = Buffer.concat(fragments, this.#fragmentsBytes);
+	    this.#fragments = [];
+	    this.#fragmentsBytes = 0;
+
+	    return output
 	  }
 
 	  parseCloseBody (data) {
@@ -26758,11 +27130,18 @@ function requireWebsocket () {
 	   * @see https://websockets.spec.whatwg.org/#feedback-from-the-protocol
 	   */
 	  #onConnectionEstablished (response, parsedExtensions) {
-	    // processResponse is called when the "response’s header list has been received and initialized."
+	    // processResponse is called when the "response's header list has been received and initialized."
 	    // once this happens, the connection is open
 	    this[kResponse] = response;
 
-	    const parser = new ByteParser(this, parsedExtensions);
+	    const webSocketOptions = this[kController]?.dispatcher?.webSocketOptions;
+	    const maxFragments = webSocketOptions?.maxFragments;
+	    const maxPayloadSize = webSocketOptions?.maxPayloadSize;
+
+	    const parser = new ByteParser(this, parsedExtensions, {
+	      maxFragments,
+	      maxPayloadSize
+	    });
 	    parser.on('drain', onParserDrain);
 	    parser.on('error', onParserError.bind(this));
 
@@ -26967,6 +27346,7 @@ var hasRequiredEventsourceStream;
 function requireEventsourceStream () {
 	if (hasRequiredEventsourceStream) return eventsourceStream;
 	hasRequiredEventsourceStream = 1;
+	const buffer = __require$d();
 	const { Transform } = __require$e();
 	const { isASCIINumber, isValidLastEventId } = requireUtil();
 
@@ -26990,6 +27370,63 @@ function requireEventsourceStream () {
 	 * @type {32} SPACE
 	 */
 	const SPACE = 0x20;
+
+	const defaultMaxEventSize = buffer.kStringMaxLength;
+
+	const DATA = Buffer.from('data');
+	const EVENT = Buffer.from('event');
+	const ID = Buffer.from('id');
+	const RETRY = Buffer.from('retry');
+
+	// Each data field creates a string node, and each unconsumed input chunk keeps
+	// a Buffer wrapper. The absolute ceiling protects the large default byte limit.
+	const minParserItems = 1024;
+	const maxParserItems = 131072;
+	const bytesPerParserItem = 128;
+
+	function isASCIINumberBytes (buffer, start) {
+	  if (start >= buffer.length) {
+	    return false
+	  }
+
+	  for (let i = start; i < buffer.length; i++) {
+	    if (buffer[i] < 0x30 || buffer[i] > 0x39) {
+	      return false
+	    }
+	  }
+
+	  return true
+	}
+
+	function isValidLastEventIdBytes (buffer, start) {
+	  for (let i = start; i < buffer.length; i++) {
+	    if (buffer[i] === 0x00) {
+	      return false
+	    }
+	  }
+
+	  return true
+	}
+
+	function isFieldName (line, length, field) {
+	  if (length !== field.length) {
+	    return false
+	  }
+
+	  for (let i = 0; i < length; i++) {
+	    if (line[i] !== field[i]) {
+	      return false
+	    }
+	  }
+
+	  return true
+	}
+
+	function createMaxEventSizeExceededError () {
+	  const error = new Error('EventSource message size exceeded');
+	  error.aborted = false;
+	  return error
+	}
 
 	/**
 	 * @typedef {object} EventSourceStreamEvent
@@ -27031,11 +27468,21 @@ function requireEventsourceStream () {
 	  eventEndCheck = false
 
 	  /**
-	   * @type {Buffer}
+	   * @type {Buffer[]}
 	   */
-	  buffer = null
+	  chunks = []
 
+	  chunkIndex = 0
 	  pos = 0
+	  lineChunkIndex = 0
+	  linePos = 0
+	  lineLength = 0
+	  eventSize = 0
+	  eventFieldSizes = { data: 0, event: 0, id: 0, retry: 0 }
+	  dataLineCount = 0
+	  maxEventSize
+	  maxDataLines
+	  maxBufferedChunks
 
 	  event = {
 	    data: undefined,
@@ -27046,6 +27493,7 @@ function requireEventsourceStream () {
 
 	  /**
 	   * @param {object} options
+	   * @param {number} [options.maxEventSize]
 	   * @param {eventSourceSettings} options.eventSourceSettings
 	   * @param {Function} [options.push]
 	   */
@@ -27057,6 +27505,12 @@ function requireEventsourceStream () {
 	    super(options);
 
 	    this.state = options.eventSourceSettings || {};
+	    this.maxEventSize = options.maxEventSize ?? defaultMaxEventSize;
+	    const parserItemLimit = this.maxEventSize > 0
+	      ? Math.min(maxParserItems, Math.max(minParserItems, Math.floor(this.maxEventSize / bytesPerParserItem)))
+	      : 0;
+	    this.maxDataLines = parserItemLimit;
+	    this.maxBufferedChunks = parserItemLimit;
 	    if (options.push) {
 	      this.push = options.push;
 	    }
@@ -27074,92 +27528,28 @@ function requireEventsourceStream () {
 	      return
 	    }
 
-	    // Cache the chunk in the buffer, as the data might not be complete while
-	    // processing it
-	    // TODO: Investigate if there is a more performant way to handle
-	    // incoming chunks
-	    // see: https://github.com/nodejs/undici/issues/2630
-	    if (this.buffer) {
-	      this.buffer = Buffer.concat([this.buffer, chunk]);
-	    } else {
-	      this.buffer = chunk;
+	    // A leading line ending can immediately release the currently buffered
+	    // line, even when it uses the final allowed chunk slot.
+	    if (this.maxEventSize > 0 &&
+	        this.chunks.length >= this.maxBufferedChunks &&
+	        chunk[0] !== LF && chunk[0] !== CR) {
+	      callback(createMaxEventSizeExceededError());
+	      return
 	    }
+	    this.chunks.push(chunk);
 
 	    // Strip leading byte-order-mark if we opened the stream and started
 	    // the processing of the incoming data
 	    if (this.checkBOM) {
-	      switch (this.buffer.length) {
-	        case 1:
-	          // Check if the first byte is the same as the first byte of the BOM
-	          if (this.buffer[0] === BOM[0]) {
-	            // If it is, we need to wait for more data
-	            callback();
-	            return
-	          }
-	          // Set the checkBOM flag to false as we don't need to check for the
-	          // BOM anymore
-	          this.checkBOM = false;
-
-	          // The buffer only contains one byte so we need to wait for more data
-	          callback();
-	          return
-	        case 2:
-	          // Check if the first two bytes are the same as the first two bytes
-	          // of the BOM
-	          if (
-	            this.buffer[0] === BOM[0] &&
-	            this.buffer[1] === BOM[1]
-	          ) {
-	            // If it is, we need to wait for more data, because the third byte
-	            // is needed to determine if it is the BOM or not
-	            callback();
-	            return
-	          }
-
-	          // Set the checkBOM flag to false as we don't need to check for the
-	          // BOM anymore
-	          this.checkBOM = false;
-	          break
-	        case 3:
-	          // Check if the first three bytes are the same as the first three
-	          // bytes of the BOM
-	          if (
-	            this.buffer[0] === BOM[0] &&
-	            this.buffer[1] === BOM[1] &&
-	            this.buffer[2] === BOM[2]
-	          ) {
-	            // If it is, we can drop the buffered data, as it is only the BOM
-	            this.buffer = Buffer.alloc(0);
-	            // Set the checkBOM flag to false as we don't need to check for the
-	            // BOM anymore
-	            this.checkBOM = false;
-
-	            // Await more data
-	            callback();
-	            return
-	          }
-	          // If it is not the BOM, we can start processing the data
-	          this.checkBOM = false;
-	          break
-	        default:
-	          // The buffer is longer than 3 bytes, so we can drop the BOM if it is
-	          // present
-	          if (
-	            this.buffer[0] === BOM[0] &&
-	            this.buffer[1] === BOM[1] &&
-	            this.buffer[2] === BOM[2]
-	          ) {
-	            // Remove the BOM from the buffer
-	            this.buffer = this.buffer.subarray(3);
-	          }
-
-	          // Set the checkBOM flag to false as we don't need to check for the
-	          this.checkBOM = false;
-	          break
+	      if (this.handleBOM()) {
+	        callback();
+	        return
 	      }
 	    }
 
-	    while (this.pos < this.buffer.length) {
+	    while (this.hasCurrentByte()) {
+	      const byte = this.currentByte();
+
 	      // If the previous line ended with an end-of-line, we need to check
 	      // if the next character is also an end-of-line.
 	      if (this.eventEndCheck) {
@@ -27172,10 +27562,9 @@ function requireEventsourceStream () {
 	        if (this.crlfCheck) {
 	          // If the current character is a line feed, we can remove it
 	          // from the buffer and reset the crlfCheck flag
-	          if (this.buffer[this.pos] === LF) {
-	            this.buffer = this.buffer.subarray(this.pos + 1);
-	            this.pos = 0;
+	          if (byte === LF) {
 	            this.crlfCheck = false;
+	            this.consumeCurrentByte();
 
 	            // It is possible that the line feed is not the end of the
 	            // event. We need to check if the next character is an
@@ -27191,19 +27580,17 @@ function requireEventsourceStream () {
 	          this.crlfCheck = false;
 	        }
 
-	        if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
+	        if (byte === LF || byte === CR) {
 	          // If the current character is a carriage return, we need to
 	          // set the crlfCheck flag to true, as we need to check if the
 	          // next character is a line feed so we can remove it from the
 	          // buffer
-	          if (this.buffer[this.pos] === CR) {
+	          if (byte === CR) {
 	            this.crlfCheck = true;
 	          }
 
-	          this.buffer = this.buffer.subarray(this.pos + 1);
-	          this.pos = 0;
-	          if (
-	            this.event.data !== undefined || this.event.event || this.event.id || this.event.retry) {
+	          this.consumeCurrentByte();
+	          if (this.hasPendingEvent()) {
 	            this.processEvent(this.event);
 	          }
 	          this.clearEvent();
@@ -27217,22 +27604,23 @@ function requireEventsourceStream () {
 
 	      // If the current character is an end-of-line, we can process the
 	      // line
-	      if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
+	      if (byte === LF || byte === CR) {
 	        // If the current character is a carriage return, we need to
 	        // set the crlfCheck flag to true, as we need to check if the
 	        // next character is a line feed
-	        if (this.buffer[this.pos] === CR) {
+	        if (byte === CR) {
 	          this.crlfCheck = true;
 	        }
 
 	        // In any case, we can process the line as we reached an
 	        // end-of-line character
-	        this.parseLine(this.buffer.subarray(0, this.pos), this.event);
-
-	        // Remove the processed line from the buffer
-	        this.buffer = this.buffer.subarray(this.pos + 1);
-	        // Reset the position as we removed the processed line from the buffer
-	        this.pos = 0;
+	        try {
+	          this.parseLine(this.readLine(), this.event);
+	        } catch (error) {
+	          callback(error);
+	          return
+	        }
+	        this.consumeCurrentByte();
 	        // A line was processed and this could be the end of the event. We need
 	        // to check if the next line is empty to determine if the event is
 	        // finished.
@@ -27240,15 +27628,28 @@ function requireEventsourceStream () {
 	        continue
 	      }
 
-	      this.pos++;
+	      // readLine() is only called after CR or LF. Reject an unfinished line
+	      // before it can retain an unbounded number of decoded chunks. The seven
+	      // extra bytes allow the longest field prefix ("event: " or "retry: ").
+	      if (this.maxEventSize > 0 && ++this.lineLength > this.maxEventSize + 7) {
+	        callback(createMaxEventSizeExceededError());
+	        return
+	      }
+	      this.advanceCursor();
 	    }
 
 	    callback();
 	  }
 
+	  _destroy (error, callback) {
+	    this.chunks.length = 0;
+	    this.clearEvent();
+	    super._destroy(error, callback);
+	  }
+
 	  /**
 	   * @param {Buffer} line
-	   * @param {EventStreamEvent} event
+	   * @param {EventSourceStreamEvent} event
 	   */
 	  parseLine (line, event) {
 	    // If the line is empty (a blank line)
@@ -27265,65 +27666,72 @@ function requireEventsourceStream () {
 	      return
 	    }
 
-	    let field = '';
-	    let value = '';
+	    let fieldLength = line.length;
+	    let valueStart = line.length;
 
 	    // If the line contains a U+003A COLON character (:)
 	    if (colonPosition !== -1) {
-	      // Collect the characters on the line before the first U+003A COLON
-	      // character (:), and let field be that string.
-	      // TODO: Investigate if there is a more performant way to extract the
-	      // field
-	      // see: https://github.com/nodejs/undici/issues/2630
-	      field = line.subarray(0, colonPosition).toString('utf8');
+	      fieldLength = colonPosition;
 
 	      // Collect the characters on the line after the first U+003A COLON
 	      // character (:), and let value be that string.
 	      // If value starts with a U+0020 SPACE character, remove it from value.
-	      let valueStart = colonPosition + 1;
+	      valueStart = colonPosition + 1;
 	      if (line[valueStart] === SPACE) {
 	        ++valueStart;
 	      }
-	      // TODO: Investigate if there is a more performant way to extract the
-	      // value
-	      // see: https://github.com/nodejs/undici/issues/2630
-	      value = line.subarray(valueStart).toString('utf8');
-
-	      // Otherwise, the string is not empty but does not contain a U+003A COLON
-	      // character (:)
-	    } else {
-	      // Process the field using the steps described below, using the whole
-	      // line as the field name, and the empty string as the field value.
-	      field = line.toString('utf8');
-	      value = '';
 	    }
 
-	    // Modify the event with the field name and value. The value is also
-	    // decoded as UTF-8
-	    switch (field) {
-	      case 'data':
-	        if (event[field] === undefined) {
-	          event[field] = value;
-	        } else {
-	          event[field] += `\n${value}`;
-	        }
-	        break
-	      case 'retry':
-	        if (isASCIINumber(value)) {
-	          event[field] = value;
-	        }
-	        break
-	      case 'id':
-	        if (isValidLastEventId(value)) {
-	          event[field] = value;
-	        }
-	        break
-	      case 'event':
-	        if (value.length > 0) {
-	          event[field] = value;
-	        }
-	        break
+	    if (isFieldName(line, fieldLength, DATA)) {
+	      if (this.maxEventSize > 0 && this.dataLineCount >= this.maxDataLines) {
+	        throw createMaxEventSizeExceededError()
+	      }
+	      const valueBytes = line.length - valueStart;
+	      const dataSize = this.eventFieldSizes.data + (event.data === undefined ? 0 : 1) + valueBytes;
+	      this.setEventFieldSize('data', dataSize);
+
+	      const value = line.toString('utf8', valueStart);
+
+	      if (event.data === undefined) {
+	        event.data = value;
+	      } else {
+	        event.data += `\n${value}`;
+	      }
+	      this.dataLineCount++;
+	      return
 	    }
+
+	    if (isFieldName(line, fieldLength, RETRY)) {
+	      if (isASCIINumberBytes(line, valueStart)) {
+	        this.setEventFieldSize('retry', line.length - valueStart);
+	        event.retry = line.toString('utf8', valueStart);
+	      }
+	      return
+	    }
+
+	    if (isFieldName(line, fieldLength, ID)) {
+	      if (isValidLastEventIdBytes(line, valueStart)) {
+	        this.setEventFieldSize('id', line.length - valueStart);
+	        event.id = line.toString('utf8', valueStart);
+	      }
+	      return
+	    }
+
+	    if (isFieldName(line, fieldLength, EVENT)) {
+	      if (valueStart < line.length) {
+	        this.setEventFieldSize('event', line.length - valueStart);
+	        event.event = line.toString('utf8', valueStart);
+	      }
+	    }
+	  }
+
+	  setEventFieldSize (field, size) {
+	    const eventSize = this.eventSize - this.eventFieldSizes[field] + size;
+	    if (this.maxEventSize > 0 && eventSize > this.maxEventSize) {
+	      throw createMaxEventSizeExceededError()
+	    }
+	    this.eventSize = eventSize;
+	    this.eventFieldSizes[field] = size;
 	  }
 
 	  /**
@@ -27352,12 +27760,159 @@ function requireEventsourceStream () {
 	  }
 
 	  clearEvent () {
-	    this.event = {
-	      data: undefined,
-	      event: undefined,
-	      id: undefined,
-	      retry: undefined
-	    };
+	    this.event.data = undefined;
+	    this.event.event = undefined;
+	    this.event.id = undefined;
+	    this.event.retry = undefined;
+	    this.eventSize = 0;
+	    this.dataLineCount = 0;
+	    this.eventFieldSizes.data = 0;
+	    this.eventFieldSizes.event = 0;
+	    this.eventFieldSizes.id = 0;
+	    this.eventFieldSizes.retry = 0;
+	  }
+
+	  hasPendingEvent () {
+	    return this.event.data !== undefined ||
+	      this.event.event !== undefined ||
+	      this.event.id !== undefined ||
+	      this.event.retry !== undefined
+	  }
+
+	  hasCurrentByte () {
+	    return this.chunkIndex < this.chunks.length &&
+	      this.pos < this.chunks[this.chunkIndex].length
+	  }
+
+	  currentByte () {
+	    return this.chunks[this.chunkIndex][this.pos]
+	  }
+
+	  consumeCurrentByte () {
+	    this.advanceCursor();
+	    this.syncLineStartToCursor();
+	  }
+
+	  advanceCursor () {
+	    this.pos++;
+
+	    while (this.chunkIndex < this.chunks.length && this.pos >= this.chunks[this.chunkIndex].length) {
+	      this.chunkIndex++;
+	      this.pos = 0;
+	    }
+	  }
+
+	  syncLineStartToCursor () {
+	    this.lineChunkIndex = this.chunkIndex;
+	    this.linePos = this.pos;
+	    this.lineLength = 0;
+	    this.dropConsumedChunks();
+	  }
+
+	  dropConsumedChunks () {
+	    if (this.lineChunkIndex > 0) {
+	      const consumed = this.lineChunkIndex;
+	      this.chunks.splice(0, consumed);
+	      this.lineChunkIndex = 0;
+	      this.chunkIndex -= consumed;
+	    }
+
+	    if (this.chunkIndex === this.chunks.length) {
+	      this.chunks.length = 0;
+	      this.chunkIndex = 0;
+	      this.pos = 0;
+	      this.lineChunkIndex = 0;
+	      this.linePos = 0;
+	    }
+	  }
+
+	  readLine () {
+	    if (this.lineChunkIndex === this.chunkIndex) {
+	      return this.chunks[this.chunkIndex].subarray(this.linePos, this.pos)
+	    }
+
+	    const chunks = [];
+	    let length = 0;
+
+	    for (let i = this.lineChunkIndex; i <= this.chunkIndex; i++) {
+	      const chunk = this.chunks[i];
+	      const start = i === this.lineChunkIndex ? this.linePos : 0;
+	      const end = i === this.chunkIndex ? this.pos : chunk.length;
+	      const slice = chunk.subarray(start, end);
+	      length += slice.length;
+	      chunks.push(slice);
+	    }
+
+	    return Buffer.concat(chunks, length)
+	  }
+
+	  peekBufferedByte (offset) {
+	    let chunkIndex = this.lineChunkIndex;
+	    let pos = this.linePos;
+
+	    while (chunkIndex < this.chunks.length) {
+	      const chunk = this.chunks[chunkIndex];
+	      const remaining = chunk.length - pos;
+
+	      if (offset < remaining) {
+	        return chunk[pos + offset]
+	      }
+
+	      offset -= remaining;
+	      chunkIndex++;
+	      pos = 0;
+	    }
+	  }
+
+	  discardLeadingBytes (count) {
+	    while (count > 0 && this.lineChunkIndex < this.chunks.length) {
+	      const chunk = this.chunks[this.lineChunkIndex];
+	      const remaining = chunk.length - this.linePos;
+
+	      if (count < remaining) {
+	        this.linePos += count;
+	        count = 0;
+	      } else {
+	        count -= remaining;
+	        this.lineChunkIndex++;
+	        this.linePos = 0;
+	      }
+	    }
+
+	    this.chunkIndex = this.lineChunkIndex;
+	    this.pos = this.linePos;
+	    this.dropConsumedChunks();
+	  }
+
+	  handleBOM () {
+	    const first = this.peekBufferedByte(0);
+	    const second = this.peekBufferedByte(1);
+	    const third = this.peekBufferedByte(2);
+
+	    if (second === undefined) {
+	      if (first === BOM[0]) {
+	        return true
+	      }
+
+	      this.checkBOM = false;
+	      return true
+	    }
+
+	    if (third === undefined) {
+	      if (first === BOM[0] && second === BOM[1]) {
+	        return true
+	      }
+
+	      this.checkBOM = false;
+	      return false
+	    }
+
+	    if (first === BOM[0] && second === BOM[1] && third === BOM[2]) {
+	      this.discardLeadingBytes(3);
+	    }
+
+	    this.checkBOM = false;
+	    return !this.hasCurrentByte()
 	  }
 	}
 
@@ -27385,6 +27940,7 @@ function requireEventsource () {
 	const { delay } = requireUtil();
 	const { kEnumerableProperty } = requireUtil$7();
 	const { environmentSettingsObject } = requireUtil$6();
+	const { getGlobalDispatcher } = requireGlobal();
 
 	let experimentalWarned = false;
 
@@ -27666,6 +28222,7 @@ function requireEventsource () {
 
 	      const eventSourceStream = new EventSourceStream({
 	        eventSourceSettings: this.#state,
+	        maxEventSize: this.#dispatcher.eventSourceOptions?.maxEventSize,
 	        push: (event) => {
 	          this.dispatchEvent(createFastMessageEvent(
 	            event.type,
@@ -27844,7 +28401,8 @@ function requireEventsource () {
 	  },
 	  {
 	    key: 'dispatcher', // undici only
-	    converter: webidl.converters.any
+	    converter: webidl.converters.any,
+	    defaultValue: () => getGlobalDispatcher()
 	  }
 	]);
 
@@ -28031,3117 +28589,245 @@ function requireUndici () {
 	return undici;
 }
 
-var hasRequiredLib;
+requireUndici();
 
-function requireLib () {
-	if (hasRequiredLib) return lib;
-	hasRequiredLib = 1;
-	/* eslint-disable @typescript-eslint/no-explicit-any */
-	var __createBinding = (lib && lib.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    var desc = Object.getOwnPropertyDescriptor(m, k);
-	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-	      desc = { enumerable: true, get: function() { return m[k]; } };
-	    }
-	    Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    o[k2] = m[k];
-	}));
-	var __setModuleDefault = (lib && lib.__setModuleDefault) || (Object.create ? (function(o, v) {
-	    Object.defineProperty(o, "default", { enumerable: true, value: v });
-	}) : function(o, v) {
-	    o["default"] = v;
-	});
-	var __importStar = (lib && lib.__importStar) || (function () {
-	    var ownKeys = function(o) {
-	        ownKeys = Object.getOwnPropertyNames || function (o) {
-	            var ar = [];
-	            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-	            return ar;
-	        };
-	        return ownKeys(o);
-	    };
-	    return function (mod) {
-	        if (mod && mod.__esModule) return mod;
-	        var result = {};
-	        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-	        __setModuleDefault(result, mod);
-	        return result;
-	    };
-	})();
-	var __awaiter = (lib && lib.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(lib, "__esModule", { value: true });
-	lib.HttpClient = lib.HttpClientResponse = lib.HttpClientError = lib.MediaTypes = lib.Headers = lib.HttpCodes = void 0;
-	lib.getProxyUrl = getProxyUrl;
-	lib.isHttps = isHttps;
-	const http = __importStar(require$$2);
-	const https = __importStar(require$$3);
-	const pm = __importStar(requireProxy());
-	const tunnel = __importStar(requireTunnel());
-	const undici_1 = requireUndici();
-	var HttpCodes;
-	(function (HttpCodes) {
-	    HttpCodes[HttpCodes["OK"] = 200] = "OK";
-	    HttpCodes[HttpCodes["MultipleChoices"] = 300] = "MultipleChoices";
-	    HttpCodes[HttpCodes["MovedPermanently"] = 301] = "MovedPermanently";
-	    HttpCodes[HttpCodes["ResourceMoved"] = 302] = "ResourceMoved";
-	    HttpCodes[HttpCodes["SeeOther"] = 303] = "SeeOther";
-	    HttpCodes[HttpCodes["NotModified"] = 304] = "NotModified";
-	    HttpCodes[HttpCodes["UseProxy"] = 305] = "UseProxy";
-	    HttpCodes[HttpCodes["SwitchProxy"] = 306] = "SwitchProxy";
-	    HttpCodes[HttpCodes["TemporaryRedirect"] = 307] = "TemporaryRedirect";
-	    HttpCodes[HttpCodes["PermanentRedirect"] = 308] = "PermanentRedirect";
-	    HttpCodes[HttpCodes["BadRequest"] = 400] = "BadRequest";
-	    HttpCodes[HttpCodes["Unauthorized"] = 401] = "Unauthorized";
-	    HttpCodes[HttpCodes["PaymentRequired"] = 402] = "PaymentRequired";
-	    HttpCodes[HttpCodes["Forbidden"] = 403] = "Forbidden";
-	    HttpCodes[HttpCodes["NotFound"] = 404] = "NotFound";
-	    HttpCodes[HttpCodes["MethodNotAllowed"] = 405] = "MethodNotAllowed";
-	    HttpCodes[HttpCodes["NotAcceptable"] = 406] = "NotAcceptable";
-	    HttpCodes[HttpCodes["ProxyAuthenticationRequired"] = 407] = "ProxyAuthenticationRequired";
-	    HttpCodes[HttpCodes["RequestTimeout"] = 408] = "RequestTimeout";
-	    HttpCodes[HttpCodes["Conflict"] = 409] = "Conflict";
-	    HttpCodes[HttpCodes["Gone"] = 410] = "Gone";
-	    HttpCodes[HttpCodes["TooManyRequests"] = 429] = "TooManyRequests";
-	    HttpCodes[HttpCodes["InternalServerError"] = 500] = "InternalServerError";
-	    HttpCodes[HttpCodes["NotImplemented"] = 501] = "NotImplemented";
-	    HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
-	    HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
-	    HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
-	})(HttpCodes || (lib.HttpCodes = HttpCodes = {}));
-	var Headers;
-	(function (Headers) {
-	    Headers["Accept"] = "accept";
-	    Headers["ContentType"] = "content-type";
-	})(Headers || (lib.Headers = Headers = {}));
-	var MediaTypes;
-	(function (MediaTypes) {
-	    MediaTypes["ApplicationJson"] = "application/json";
-	})(MediaTypes || (lib.MediaTypes = MediaTypes = {}));
-	/**
-	 * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
-	 * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
-	 */
-	function getProxyUrl(serverUrl) {
-	    const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
-	    return proxyUrl ? proxyUrl.href : '';
-	}
-	const HttpRedirectCodes = [
-	    HttpCodes.MovedPermanently,
-	    HttpCodes.ResourceMoved,
-	    HttpCodes.SeeOther,
-	    HttpCodes.TemporaryRedirect,
-	    HttpCodes.PermanentRedirect
-	];
-	const HttpResponseRetryCodes = [
-	    HttpCodes.BadGateway,
-	    HttpCodes.ServiceUnavailable,
-	    HttpCodes.GatewayTimeout
-	];
-	const RetryableHttpVerbs = ['OPTIONS', 'GET', 'DELETE', 'HEAD'];
-	const ExponentialBackoffCeiling = 10;
-	const ExponentialBackoffTimeSlice = 5;
-	class HttpClientError extends Error {
-	    constructor(message, statusCode) {
-	        super(message);
-	        this.name = 'HttpClientError';
-	        this.statusCode = statusCode;
-	        Object.setPrototypeOf(this, HttpClientError.prototype);
-	    }
-	}
-	lib.HttpClientError = HttpClientError;
-	class HttpClientResponse {
-	    constructor(message) {
-	        this.message = message;
-	    }
-	    readBody() {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-	                let output = Buffer.alloc(0);
-	                this.message.on('data', (chunk) => {
-	                    output = Buffer.concat([output, chunk]);
-	                });
-	                this.message.on('end', () => {
-	                    resolve(output.toString());
-	                });
-	            }));
-	        });
-	    }
-	    readBodyBuffer() {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-	                const chunks = [];
-	                this.message.on('data', (chunk) => {
-	                    chunks.push(chunk);
-	                });
-	                this.message.on('end', () => {
-	                    resolve(Buffer.concat(chunks));
-	                });
-	            }));
-	        });
-	    }
-	}
-	lib.HttpClientResponse = HttpClientResponse;
-	function isHttps(requestUrl) {
-	    const parsedUrl = new URL(requestUrl);
-	    return parsedUrl.protocol === 'https:';
-	}
-	class HttpClient {
-	    constructor(userAgent, handlers, requestOptions) {
-	        this._ignoreSslError = false;
-	        this._allowRedirects = true;
-	        this._allowRedirectDowngrade = false;
-	        this._maxRedirects = 50;
-	        this._allowRetries = false;
-	        this._maxRetries = 1;
-	        this._keepAlive = false;
-	        this._disposed = false;
-	        this.userAgent = this._getUserAgentWithOrchestrationId(userAgent);
-	        this.handlers = handlers || [];
-	        this.requestOptions = requestOptions;
-	        if (requestOptions) {
-	            if (requestOptions.ignoreSslError != null) {
-	                this._ignoreSslError = requestOptions.ignoreSslError;
-	            }
-	            this._socketTimeout = requestOptions.socketTimeout;
-	            if (requestOptions.allowRedirects != null) {
-	                this._allowRedirects = requestOptions.allowRedirects;
-	            }
-	            if (requestOptions.allowRedirectDowngrade != null) {
-	                this._allowRedirectDowngrade = requestOptions.allowRedirectDowngrade;
-	            }
-	            if (requestOptions.maxRedirects != null) {
-	                this._maxRedirects = Math.max(requestOptions.maxRedirects, 0);
-	            }
-	            if (requestOptions.keepAlive != null) {
-	                this._keepAlive = requestOptions.keepAlive;
-	            }
-	            if (requestOptions.allowRetries != null) {
-	                this._allowRetries = requestOptions.allowRetries;
-	            }
-	            if (requestOptions.maxRetries != null) {
-	                this._maxRetries = requestOptions.maxRetries;
-	            }
-	        }
-	    }
-	    options(requestUrl, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
-	        });
-	    }
-	    get(requestUrl, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('GET', requestUrl, null, additionalHeaders || {});
-	        });
-	    }
-	    del(requestUrl, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('DELETE', requestUrl, null, additionalHeaders || {});
-	        });
-	    }
-	    post(requestUrl, data, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('POST', requestUrl, data, additionalHeaders || {});
-	        });
-	    }
-	    patch(requestUrl, data, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('PATCH', requestUrl, data, additionalHeaders || {});
-	        });
-	    }
-	    put(requestUrl, data, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('PUT', requestUrl, data, additionalHeaders || {});
-	        });
-	    }
-	    head(requestUrl, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request('HEAD', requestUrl, null, additionalHeaders || {});
-	        });
-	    }
-	    sendStream(verb, requestUrl, stream, additionalHeaders) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return this.request(verb, requestUrl, stream, additionalHeaders);
-	        });
-	    }
-	    /**
-	     * Gets a typed object from an endpoint
-	     * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
-	     */
-	    getJson(requestUrl_1) {
-	        return __awaiter(this, arguments, void 0, function* (requestUrl, additionalHeaders = {}) {
-	            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-	            const res = yield this.get(requestUrl, additionalHeaders);
-	            return this._processResponse(res, this.requestOptions);
-	        });
-	    }
-	    postJson(requestUrl_1, obj_1) {
-	        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
-	            const data = JSON.stringify(obj, null, 2);
-	            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-	            additionalHeaders[Headers.ContentType] =
-	                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
-	            const res = yield this.post(requestUrl, data, additionalHeaders);
-	            return this._processResponse(res, this.requestOptions);
-	        });
-	    }
-	    putJson(requestUrl_1, obj_1) {
-	        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
-	            const data = JSON.stringify(obj, null, 2);
-	            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-	            additionalHeaders[Headers.ContentType] =
-	                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
-	            const res = yield this.put(requestUrl, data, additionalHeaders);
-	            return this._processResponse(res, this.requestOptions);
-	        });
-	    }
-	    patchJson(requestUrl_1, obj_1) {
-	        return __awaiter(this, arguments, void 0, function* (requestUrl, obj, additionalHeaders = {}) {
-	            const data = JSON.stringify(obj, null, 2);
-	            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
-	            additionalHeaders[Headers.ContentType] =
-	                this._getExistingOrDefaultContentTypeHeader(additionalHeaders, MediaTypes.ApplicationJson);
-	            const res = yield this.patch(requestUrl, data, additionalHeaders);
-	            return this._processResponse(res, this.requestOptions);
-	        });
-	    }
-	    /**
-	     * Makes a raw http request.
-	     * All other methods such as get, post, patch, and request ultimately call this.
-	     * Prefer get, del, post and patch
-	     */
-	    request(verb, requestUrl, data, headers) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            if (this._disposed) {
-	                throw new Error('Client has already been disposed.');
-	            }
-	            const parsedUrl = new URL(requestUrl);
-	            let info = this._prepareRequest(verb, parsedUrl, headers);
-	            // Only perform retries on reads since writes may not be idempotent.
-	            const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb)
-	                ? this._maxRetries + 1
-	                : 1;
-	            let numTries = 0;
-	            let response;
-	            do {
-	                response = yield this.requestRaw(info, data);
-	                // Check if it's an authentication challenge
-	                if (response &&
-	                    response.message &&
-	                    response.message.statusCode === HttpCodes.Unauthorized) {
-	                    let authenticationHandler;
-	                    for (const handler of this.handlers) {
-	                        if (handler.canHandleAuthentication(response)) {
-	                            authenticationHandler = handler;
-	                            break;
-	                        }
-	                    }
-	                    if (authenticationHandler) {
-	                        return authenticationHandler.handleAuthentication(this, info, data);
-	                    }
-	                    else {
-	                        // We have received an unauthorized response but have no handlers to handle it.
-	                        // Let the response return to the caller.
-	                        return response;
-	                    }
-	                }
-	                let redirectsRemaining = this._maxRedirects;
-	                while (response.message.statusCode &&
-	                    HttpRedirectCodes.includes(response.message.statusCode) &&
-	                    this._allowRedirects &&
-	                    redirectsRemaining > 0) {
-	                    const redirectUrl = response.message.headers['location'];
-	                    if (!redirectUrl) {
-	                        // if there's no location to redirect to, we won't
-	                        break;
-	                    }
-	                    const parsedRedirectUrl = new URL(redirectUrl);
-	                    if (parsedUrl.protocol === 'https:' &&
-	                        parsedUrl.protocol !== parsedRedirectUrl.protocol &&
-	                        !this._allowRedirectDowngrade) {
-	                        throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
-	                    }
-	                    // we need to finish reading the response before reassigning response
-	                    // which will leak the open socket.
-	                    yield response.readBody();
-	                    // strip authorization header if redirected to a different hostname
-	                    if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
-	                        for (const header in headers) {
-	                            // header names are case insensitive
-	                            if (header.toLowerCase() === 'authorization') {
-	                                delete headers[header];
-	                            }
-	                        }
-	                    }
-	                    // let's make the request with the new redirectUrl
-	                    info = this._prepareRequest(verb, parsedRedirectUrl, headers);
-	                    response = yield this.requestRaw(info, data);
-	                    redirectsRemaining--;
-	                }
-	                if (!response.message.statusCode ||
-	                    !HttpResponseRetryCodes.includes(response.message.statusCode)) {
-	                    // If not a retry code, return immediately instead of retrying
-	                    return response;
-	                }
-	                numTries += 1;
-	                if (numTries < maxTries) {
-	                    yield response.readBody();
-	                    yield this._performExponentialBackoff(numTries);
-	                }
-	            } while (numTries < maxTries);
-	            return response;
-	        });
-	    }
-	    /**
-	     * Needs to be called if keepAlive is set to true in request options.
-	     */
-	    dispose() {
-	        if (this._agent) {
-	            this._agent.destroy();
-	        }
-	        this._disposed = true;
-	    }
-	    /**
-	     * Raw request.
-	     * @param info
-	     * @param data
-	     */
-	    requestRaw(info, data) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return new Promise((resolve, reject) => {
-	                function callbackForResult(err, res) {
-	                    if (err) {
-	                        reject(err);
-	                    }
-	                    else if (!res) {
-	                        // If `err` is not passed, then `res` must be passed.
-	                        reject(new Error('Unknown error'));
-	                    }
-	                    else {
-	                        resolve(res);
-	                    }
-	                }
-	                this.requestRawWithCallback(info, data, callbackForResult);
-	            });
-	        });
-	    }
-	    /**
-	     * Raw request with callback.
-	     * @param info
-	     * @param data
-	     * @param onResult
-	     */
-	    requestRawWithCallback(info, data, onResult) {
-	        if (typeof data === 'string') {
-	            if (!info.options.headers) {
-	                info.options.headers = {};
-	            }
-	            info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
-	        }
-	        let callbackCalled = false;
-	        function handleResult(err, res) {
-	            if (!callbackCalled) {
-	                callbackCalled = true;
-	                onResult(err, res);
-	            }
-	        }
-	        const req = info.httpModule.request(info.options, (msg) => {
-	            const res = new HttpClientResponse(msg);
-	            handleResult(undefined, res);
-	        });
-	        let socket;
-	        req.on('socket', sock => {
-	            socket = sock;
-	        });
-	        // If we ever get disconnected, we want the socket to timeout eventually
-	        req.setTimeout(this._socketTimeout || 3 * 60000, () => {
-	            if (socket) {
-	                socket.end();
-	            }
-	            handleResult(new Error(`Request timeout: ${info.options.path}`));
-	        });
-	        req.on('error', function (err) {
-	            // err has statusCode property
-	            // res should have headers
-	            handleResult(err);
-	        });
-	        if (data && typeof data === 'string') {
-	            req.write(data, 'utf8');
-	        }
-	        if (data && typeof data !== 'string') {
-	            data.on('close', function () {
-	                req.end();
-	            });
-	            data.pipe(req);
-	        }
-	        else {
-	            req.end();
-	        }
-	    }
-	    /**
-	     * Gets an http agent. This function is useful when you need an http agent that handles
-	     * routing through a proxy server - depending upon the url and proxy environment variables.
-	     * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
-	     */
-	    getAgent(serverUrl) {
-	        const parsedUrl = new URL(serverUrl);
-	        return this._getAgent(parsedUrl);
-	    }
-	    getAgentDispatcher(serverUrl) {
-	        const parsedUrl = new URL(serverUrl);
-	        const proxyUrl = pm.getProxyUrl(parsedUrl);
-	        const useProxy = proxyUrl && proxyUrl.hostname;
-	        if (!useProxy) {
-	            return;
-	        }
-	        return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
-	    }
-	    _prepareRequest(method, requestUrl, headers) {
-	        const info = {};
-	        info.parsedUrl = requestUrl;
-	        const usingSsl = info.parsedUrl.protocol === 'https:';
-	        info.httpModule = usingSsl ? https : http;
-	        const defaultPort = usingSsl ? 443 : 80;
-	        info.options = {};
-	        info.options.host = info.parsedUrl.hostname;
-	        info.options.port = info.parsedUrl.port
-	            ? parseInt(info.parsedUrl.port)
-	            : defaultPort;
-	        info.options.path =
-	            (info.parsedUrl.pathname || '') + (info.parsedUrl.search || '');
-	        info.options.method = method;
-	        info.options.headers = this._mergeHeaders(headers);
-	        if (this.userAgent != null) {
-	            info.options.headers['user-agent'] = this.userAgent;
-	        }
-	        info.options.agent = this._getAgent(info.parsedUrl);
-	        // gives handlers an opportunity to participate
-	        if (this.handlers) {
-	            for (const handler of this.handlers) {
-	                handler.prepareRequest(info.options);
-	            }
-	        }
-	        return info;
-	    }
-	    _mergeHeaders(headers) {
-	        if (this.requestOptions && this.requestOptions.headers) {
-	            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
-	        }
-	        return lowercaseKeys(headers || {});
-	    }
-	    /**
-	     * Gets an existing header value or returns a default.
-	     * Handles converting number header values to strings since HTTP headers must be strings.
-	     * Note: This returns string | string[] since some headers can have multiple values.
-	     * For headers that must always be a single string (like Content-Type), use the
-	     * specialized _getExistingOrDefaultContentTypeHeader method instead.
-	     */
-	    _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
-	        let clientHeader;
-	        if (this.requestOptions && this.requestOptions.headers) {
-	            const headerValue = lowercaseKeys(this.requestOptions.headers)[header];
-	            if (headerValue) {
-	                clientHeader =
-	                    typeof headerValue === 'number' ? headerValue.toString() : headerValue;
-	            }
-	        }
-	        const additionalValue = additionalHeaders[header];
-	        if (additionalValue !== undefined) {
-	            return typeof additionalValue === 'number'
-	                ? additionalValue.toString()
-	                : additionalValue;
-	        }
-	        if (clientHeader !== undefined) {
-	            return clientHeader;
-	        }
-	        return _default;
-	    }
-	    /**
-	     * Specialized version of _getExistingOrDefaultHeader for Content-Type header.
-	     * Always returns a single string (not an array) since Content-Type should be a single value.
-	     * Converts arrays to comma-separated strings and numbers to strings to ensure type safety.
-	     * This was split from _getExistingOrDefaultHeader to provide stricter typing for callers
-	     * that assign the result to places expecting a string (e.g., additionalHeaders[Headers.ContentType]).
-	     */
-	    _getExistingOrDefaultContentTypeHeader(additionalHeaders, _default) {
-	        let clientHeader;
-	        if (this.requestOptions && this.requestOptions.headers) {
-	            const headerValue = lowercaseKeys(this.requestOptions.headers)[Headers.ContentType];
-	            if (headerValue) {
-	                if (typeof headerValue === 'number') {
-	                    clientHeader = String(headerValue);
-	                }
-	                else if (Array.isArray(headerValue)) {
-	                    clientHeader = headerValue.join(', ');
-	                }
-	                else {
-	                    clientHeader = headerValue;
-	                }
-	            }
-	        }
-	        const additionalValue = additionalHeaders[Headers.ContentType];
-	        // Return the first non-undefined value, converting numbers or arrays to strings if necessary
-	        if (additionalValue !== undefined) {
-	            if (typeof additionalValue === 'number') {
-	                return String(additionalValue);
-	            }
-	            else if (Array.isArray(additionalValue)) {
-	                return additionalValue.join(', ');
-	            }
-	            else {
-	                return additionalValue;
-	            }
-	        }
-	        if (clientHeader !== undefined) {
-	            return clientHeader;
-	        }
-	        return _default;
-	    }
-	    _getAgent(parsedUrl) {
-	        let agent;
-	        const proxyUrl = pm.getProxyUrl(parsedUrl);
-	        const useProxy = proxyUrl && proxyUrl.hostname;
-	        if (this._keepAlive && useProxy) {
-	            agent = this._proxyAgent;
-	        }
-	        if (!useProxy) {
-	            agent = this._agent;
-	        }
-	        // if agent is already assigned use that agent.
-	        if (agent) {
-	            return agent;
-	        }
-	        const usingSsl = parsedUrl.protocol === 'https:';
-	        let maxSockets = 100;
-	        if (this.requestOptions) {
-	            maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
-	        }
-	        // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
-	        if (proxyUrl && proxyUrl.hostname) {
-	            const agentOptions = {
-	                maxSockets,
-	                keepAlive: this._keepAlive,
-	                proxy: Object.assign(Object.assign({}, ((proxyUrl.username || proxyUrl.password) && {
-	                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
-	                })), { host: proxyUrl.hostname, port: proxyUrl.port })
-	            };
-	            let tunnelAgent;
-	            const overHttps = proxyUrl.protocol === 'https:';
-	            if (usingSsl) {
-	                tunnelAgent = overHttps ? tunnel.httpsOverHttps : tunnel.httpsOverHttp;
-	            }
-	            else {
-	                tunnelAgent = overHttps ? tunnel.httpOverHttps : tunnel.httpOverHttp;
-	            }
-	            agent = tunnelAgent(agentOptions);
-	            this._proxyAgent = agent;
-	        }
-	        // if tunneling agent isn't assigned create a new agent
-	        if (!agent) {
-	            const options = { keepAlive: this._keepAlive, maxSockets };
-	            agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
-	            this._agent = agent;
-	        }
-	        if (usingSsl && this._ignoreSslError) {
-	            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
-	            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
-	            // we have to cast it to any and change it directly
-	            agent.options = Object.assign(agent.options || {}, {
-	                rejectUnauthorized: false
-	            });
-	        }
-	        return agent;
-	    }
-	    _getProxyAgentDispatcher(parsedUrl, proxyUrl) {
-	        let proxyAgent;
-	        if (this._keepAlive) {
-	            proxyAgent = this._proxyAgentDispatcher;
-	        }
-	        // if agent is already assigned use that agent.
-	        if (proxyAgent) {
-	            return proxyAgent;
-	        }
-	        const usingSsl = parsedUrl.protocol === 'https:';
-	        proxyAgent = new undici_1.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
-	            token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
-	        })));
-	        this._proxyAgentDispatcher = proxyAgent;
-	        if (usingSsl && this._ignoreSslError) {
-	            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
-	            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
-	            // we have to cast it to any and change it directly
-	            proxyAgent.options = Object.assign(proxyAgent.options.requestTls || {}, {
-	                rejectUnauthorized: false
-	            });
-	        }
-	        return proxyAgent;
-	    }
-	    _getUserAgentWithOrchestrationId(userAgent) {
-	        const baseUserAgent = userAgent || 'actions/http-client';
-	        const orchId = process.env['ACTIONS_ORCHESTRATION_ID'];
-	        if (orchId) {
-	            // Sanitize the orchestration ID to ensure it contains only valid characters
-	            // Valid characters: 0-9, a-z, _, -, .
-	            const sanitizedId = orchId.replace(/[^a-z0-9_.-]/gi, '_');
-	            return `${baseUserAgent} actions_orchestration_id/${sanitizedId}`;
-	        }
-	        return baseUserAgent;
-	    }
-	    _performExponentialBackoff(retryNumber) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
-	            const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
-	            return new Promise(resolve => setTimeout(() => resolve(), ms));
-	        });
-	    }
-	    _processResponse(res, options) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-	                const statusCode = res.message.statusCode || 0;
-	                const response = {
-	                    statusCode,
-	                    result: null,
-	                    headers: {}
-	                };
-	                // not found leads to null obj returned
-	                if (statusCode === HttpCodes.NotFound) {
-	                    resolve(response);
-	                }
-	                // get the result from the body
-	                function dateTimeDeserializer(key, value) {
-	                    if (typeof value === 'string') {
-	                        const a = new Date(value);
-	                        if (!isNaN(a.valueOf())) {
-	                            return a;
-	                        }
-	                    }
-	                    return value;
-	                }
-	                let obj;
-	                let contents;
-	                try {
-	                    contents = yield res.readBody();
-	                    if (contents && contents.length > 0) {
-	                        if (options && options.deserializeDates) {
-	                            obj = JSON.parse(contents, dateTimeDeserializer);
-	                        }
-	                        else {
-	                            obj = JSON.parse(contents);
-	                        }
-	                        response.result = obj;
-	                    }
-	                    response.headers = res.message.headers;
-	                }
-	                catch (err) {
-	                    // Invalid resource (contents not json);  leaving result obj null
-	                }
-	                // note that 3xx redirects are handled by the http layer.
-	                if (statusCode > 299) {
-	                    let msg;
-	                    // if exception/error in body, attempt to get better error
-	                    if (obj && obj.message) {
-	                        msg = obj.message;
-	                    }
-	                    else if (contents && contents.length > 0) {
-	                        // it may be the case that the exception is in the body message as string
-	                        msg = contents;
-	                    }
-	                    else {
-	                        msg = `Failed request: (${statusCode})`;
-	                    }
-	                    const err = new HttpClientError(msg, statusCode);
-	                    err.result = response.result;
-	                    reject(err);
-	                }
-	                else {
-	                    resolve(response);
-	                }
-	            }));
-	        });
-	    }
-	}
-	lib.HttpClient = HttpClient;
-	const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
-	
-	return lib;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var HttpCodes;
+(function (HttpCodes) {
+    HttpCodes[HttpCodes["OK"] = 200] = "OK";
+    HttpCodes[HttpCodes["MultipleChoices"] = 300] = "MultipleChoices";
+    HttpCodes[HttpCodes["MovedPermanently"] = 301] = "MovedPermanently";
+    HttpCodes[HttpCodes["ResourceMoved"] = 302] = "ResourceMoved";
+    HttpCodes[HttpCodes["SeeOther"] = 303] = "SeeOther";
+    HttpCodes[HttpCodes["NotModified"] = 304] = "NotModified";
+    HttpCodes[HttpCodes["UseProxy"] = 305] = "UseProxy";
+    HttpCodes[HttpCodes["SwitchProxy"] = 306] = "SwitchProxy";
+    HttpCodes[HttpCodes["TemporaryRedirect"] = 307] = "TemporaryRedirect";
+    HttpCodes[HttpCodes["PermanentRedirect"] = 308] = "PermanentRedirect";
+    HttpCodes[HttpCodes["BadRequest"] = 400] = "BadRequest";
+    HttpCodes[HttpCodes["Unauthorized"] = 401] = "Unauthorized";
+    HttpCodes[HttpCodes["PaymentRequired"] = 402] = "PaymentRequired";
+    HttpCodes[HttpCodes["Forbidden"] = 403] = "Forbidden";
+    HttpCodes[HttpCodes["NotFound"] = 404] = "NotFound";
+    HttpCodes[HttpCodes["MethodNotAllowed"] = 405] = "MethodNotAllowed";
+    HttpCodes[HttpCodes["NotAcceptable"] = 406] = "NotAcceptable";
+    HttpCodes[HttpCodes["ProxyAuthenticationRequired"] = 407] = "ProxyAuthenticationRequired";
+    HttpCodes[HttpCodes["RequestTimeout"] = 408] = "RequestTimeout";
+    HttpCodes[HttpCodes["Conflict"] = 409] = "Conflict";
+    HttpCodes[HttpCodes["Gone"] = 410] = "Gone";
+    HttpCodes[HttpCodes["TooManyRequests"] = 429] = "TooManyRequests";
+    HttpCodes[HttpCodes["InternalServerError"] = 500] = "InternalServerError";
+    HttpCodes[HttpCodes["NotImplemented"] = 501] = "NotImplemented";
+    HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
+    HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
+    HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
+})(HttpCodes || (HttpCodes = {}));
+var Headers;
+(function (Headers) {
+    Headers["Accept"] = "accept";
+    Headers["ContentType"] = "content-type";
+})(Headers || (Headers = {}));
+var MediaTypes;
+(function (MediaTypes) {
+    MediaTypes["ApplicationJson"] = "application/json";
+})(MediaTypes || (MediaTypes = {}));
+[
+    HttpCodes.MovedPermanently,
+    HttpCodes.ResourceMoved,
+    HttpCodes.SeeOther,
+    HttpCodes.TemporaryRedirect,
+    HttpCodes.PermanentRedirect
+];
+[
+    HttpCodes.BadGateway,
+    HttpCodes.ServiceUnavailable,
+    HttpCodes.GatewayTimeout
+];
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+const { access, appendFile, writeFile } = promises;
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+const { chmod, copyFile, lstat, mkdir, open, readdir, rename, rm, rmdir, stat, symlink, unlink } = fs.promises;
+// export const {open} = 'fs'
+process.platform === 'win32';
+fs.constants.O_RDONLY;
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+/* eslint-disable @typescript-eslint/unbound-method */
+process.platform === 'win32';
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+os__default.platform();
+os__default.arch();
+
+(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+/**
+ * The code to exit an action
+ */
+var ExitCode;
+(function (ExitCode) {
+    /**
+     * A code indicating that the action was successful
+     */
+    ExitCode[ExitCode["Success"] = 0] = "Success";
+    /**
+     * A code indicating that the action was a failure
+     */
+    ExitCode[ExitCode["Failure"] = 1] = "Failure";
+})(ExitCode || (ExitCode = {}));
+/**
+ * Gets the value of an input.
+ * Unless trimWhitespace is set to false in InputOptions, the value is also trimmed.
+ * Returns an empty string if the value is not defined.
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   string
+ */
+function getInput(name, options) {
+    const val = process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`] || '';
+    return val.trim();
 }
-
-var auth = {};
-
-var hasRequiredAuth;
-
-function requireAuth () {
-	if (hasRequiredAuth) return auth;
-	hasRequiredAuth = 1;
-	var __awaiter = (auth && auth.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(auth, "__esModule", { value: true });
-	auth.PersonalAccessTokenCredentialHandler = auth.BearerCredentialHandler = auth.BasicCredentialHandler = void 0;
-	class BasicCredentialHandler {
-	    constructor(username, password) {
-	        this.username = username;
-	        this.password = password;
-	    }
-	    prepareRequest(options) {
-	        if (!options.headers) {
-	            throw Error('The request has no headers');
-	        }
-	        options.headers['Authorization'] = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`;
-	    }
-	    // This handler cannot handle 401
-	    canHandleAuthentication() {
-	        return false;
-	    }
-	    handleAuthentication() {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            throw new Error('not implemented');
-	        });
-	    }
-	}
-	auth.BasicCredentialHandler = BasicCredentialHandler;
-	class BearerCredentialHandler {
-	    constructor(token) {
-	        this.token = token;
-	    }
-	    // currently implements pre-authorization
-	    // TODO: support preAuth = false where it hooks on 401
-	    prepareRequest(options) {
-	        if (!options.headers) {
-	            throw Error('The request has no headers');
-	        }
-	        options.headers['Authorization'] = `Bearer ${this.token}`;
-	    }
-	    // This handler cannot handle 401
-	    canHandleAuthentication() {
-	        return false;
-	    }
-	    handleAuthentication() {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            throw new Error('not implemented');
-	        });
-	    }
-	}
-	auth.BearerCredentialHandler = BearerCredentialHandler;
-	class PersonalAccessTokenCredentialHandler {
-	    constructor(token) {
-	        this.token = token;
-	    }
-	    // currently implements pre-authorization
-	    // TODO: support preAuth = false where it hooks on 401
-	    prepareRequest(options) {
-	        if (!options.headers) {
-	            throw Error('The request has no headers');
-	        }
-	        options.headers['Authorization'] = `Basic ${Buffer.from(`PAT:${this.token}`).toString('base64')}`;
-	    }
-	    // This handler cannot handle 401
-	    canHandleAuthentication() {
-	        return false;
-	    }
-	    handleAuthentication() {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            throw new Error('not implemented');
-	        });
-	    }
-	}
-	auth.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
-	
-	return auth;
+/**
+ * Sets the value of an output.
+ *
+ * @param     name     name of the output to set
+ * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function setOutput(name, value) {
+    const filePath = process.env['GITHUB_OUTPUT'] || '';
+    if (filePath) {
+        return issueFileCommand('OUTPUT', prepareKeyValueMessage(name, value));
+    }
+    process.stdout.write(os.EOL);
+    issueCommand('set-output', { name }, toCommandValue(value));
 }
-
-var hasRequiredOidcUtils;
-
-function requireOidcUtils () {
-	if (hasRequiredOidcUtils) return oidcUtils;
-	hasRequiredOidcUtils = 1;
-	var __awaiter = (oidcUtils && oidcUtils.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(oidcUtils, "__esModule", { value: true });
-	oidcUtils.OidcClient = void 0;
-	const http_client_1 = requireLib();
-	const auth_1 = requireAuth();
-	const core_1 = requireCore();
-	class OidcClient {
-	    static createHttpClient(allowRetry = true, maxRetry = 10) {
-	        const requestOptions = {
-	            allowRetries: allowRetry,
-	            maxRetries: maxRetry
-	        };
-	        return new http_client_1.HttpClient('actions/oidc-client', [new auth_1.BearerCredentialHandler(OidcClient.getRequestToken())], requestOptions);
-	    }
-	    static getRequestToken() {
-	        const token = process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'];
-	        if (!token) {
-	            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_TOKEN env variable');
-	        }
-	        return token;
-	    }
-	    static getIDTokenUrl() {
-	        const runtimeUrl = process.env['ACTIONS_ID_TOKEN_REQUEST_URL'];
-	        if (!runtimeUrl) {
-	            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable');
-	        }
-	        return runtimeUrl;
-	    }
-	    static getCall(id_token_url) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            var _a;
-	            const httpclient = OidcClient.createHttpClient();
-	            const res = yield httpclient
-	                .getJson(id_token_url)
-	                .catch(error => {
-	                throw new Error(`Failed to get ID Token. \n 
-        Error Code : ${error.statusCode}\n 
-        Error Message: ${error.message}`);
-	            });
-	            const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
-	            if (!id_token) {
-	                throw new Error('Response json body do not have ID Token field');
-	            }
-	            return id_token;
-	        });
-	    }
-	    static getIDToken(audience) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            try {
-	                // New ID Token is requested from action service
-	                let id_token_url = OidcClient.getIDTokenUrl();
-	                if (audience) {
-	                    const encodedAudience = encodeURIComponent(audience);
-	                    id_token_url = `${id_token_url}&audience=${encodedAudience}`;
-	                }
-	                (0, core_1.debug)(`ID token url is ${id_token_url}`);
-	                const id_token = yield OidcClient.getCall(id_token_url);
-	                (0, core_1.setSecret)(id_token);
-	                return id_token;
-	            }
-	            catch (error) {
-	                throw new Error(`Error message: ${error.message}`);
-	            }
-	        });
-	    }
-	}
-	oidcUtils.OidcClient = OidcClient;
-	
-	return oidcUtils;
+//-----------------------------------------------------------------------
+// Results
+//-----------------------------------------------------------------------
+/**
+ * Sets the action status to failed.
+ * When the action exits it will be with an exit code of 1
+ * @param message add error issue message
+ */
+function setFailed(message) {
+    process.exitCode = ExitCode.Failure;
+    error(message);
 }
-
-var summary = {};
-
-var hasRequiredSummary;
-
-function requireSummary () {
-	if (hasRequiredSummary) return summary;
-	hasRequiredSummary = 1;
-	(function (exports$1) {
-		var __awaiter = (summary && summary.__awaiter) || function (thisArg, _arguments, P, generator) {
-		    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-		    return new (P || (P = Promise))(function (resolve, reject) {
-		        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-		        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-		        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-		        step((generator = generator.apply(thisArg, _arguments || [])).next());
-		    });
-		};
-		Object.defineProperty(exports$1, "__esModule", { value: true });
-		exports$1.summary = exports$1.markdownSummary = exports$1.SUMMARY_DOCS_URL = exports$1.SUMMARY_ENV_VAR = void 0;
-		const os_1 = require$$0;
-		const fs_1 = require$$1;
-		const { access, appendFile, writeFile } = fs_1.promises;
-		exports$1.SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
-		exports$1.SUMMARY_DOCS_URL = 'https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary';
-		class Summary {
-		    constructor() {
-		        this._buffer = '';
-		    }
-		    /**
-		     * Finds the summary file path from the environment, rejects if env var is not found or file does not exist
-		     * Also checks r/w permissions.
-		     *
-		     * @returns step summary file path
-		     */
-		    filePath() {
-		        return __awaiter(this, void 0, void 0, function* () {
-		            if (this._filePath) {
-		                return this._filePath;
-		            }
-		            const pathFromEnv = process.env[exports$1.SUMMARY_ENV_VAR];
-		            if (!pathFromEnv) {
-		                throw new Error(`Unable to find environment variable for $${exports$1.SUMMARY_ENV_VAR}. Check if your runtime environment supports job summaries.`);
-		            }
-		            try {
-		                yield access(pathFromEnv, fs_1.constants.R_OK | fs_1.constants.W_OK);
-		            }
-		            catch (_a) {
-		                throw new Error(`Unable to access summary file: '${pathFromEnv}'. Check if the file has correct read/write permissions.`);
-		            }
-		            this._filePath = pathFromEnv;
-		            return this._filePath;
-		        });
-		    }
-		    /**
-		     * Wraps content in an HTML tag, adding any HTML attributes
-		     *
-		     * @param {string} tag HTML tag to wrap
-		     * @param {string | null} content content within the tag
-		     * @param {[attribute: string]: string} attrs key-value list of HTML attributes to add
-		     *
-		     * @returns {string} content wrapped in HTML element
-		     */
-		    wrap(tag, content, attrs = {}) {
-		        const htmlAttrs = Object.entries(attrs)
-		            .map(([key, value]) => ` ${key}="${value}"`)
-		            .join('');
-		        if (!content) {
-		            return `<${tag}${htmlAttrs}>`;
-		        }
-		        return `<${tag}${htmlAttrs}>${content}</${tag}>`;
-		    }
-		    /**
-		     * Writes text in the buffer to the summary buffer file and empties buffer. Will append by default.
-		     *
-		     * @param {SummaryWriteOptions} [options] (optional) options for write operation
-		     *
-		     * @returns {Promise<Summary>} summary instance
-		     */
-		    write(options) {
-		        return __awaiter(this, void 0, void 0, function* () {
-		            const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
-		            const filePath = yield this.filePath();
-		            const writeFunc = overwrite ? writeFile : appendFile;
-		            yield writeFunc(filePath, this._buffer, { encoding: 'utf8' });
-		            return this.emptyBuffer();
-		        });
-		    }
-		    /**
-		     * Clears the summary buffer and wipes the summary file
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    clear() {
-		        return __awaiter(this, void 0, void 0, function* () {
-		            return this.emptyBuffer().write({ overwrite: true });
-		        });
-		    }
-		    /**
-		     * Returns the current summary buffer as a string
-		     *
-		     * @returns {string} string of summary buffer
-		     */
-		    stringify() {
-		        return this._buffer;
-		    }
-		    /**
-		     * If the summary buffer is empty
-		     *
-		     * @returns {boolen} true if the buffer is empty
-		     */
-		    isEmptyBuffer() {
-		        return this._buffer.length === 0;
-		    }
-		    /**
-		     * Resets the summary buffer without writing to summary file
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    emptyBuffer() {
-		        this._buffer = '';
-		        return this;
-		    }
-		    /**
-		     * Adds raw text to the summary buffer
-		     *
-		     * @param {string} text content to add
-		     * @param {boolean} [addEOL=false] (optional) append an EOL to the raw text (default: false)
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addRaw(text, addEOL = false) {
-		        this._buffer += text;
-		        return addEOL ? this.addEOL() : this;
-		    }
-		    /**
-		     * Adds the operating system-specific end-of-line marker to the buffer
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addEOL() {
-		        return this.addRaw(os_1.EOL);
-		    }
-		    /**
-		     * Adds an HTML codeblock to the summary buffer
-		     *
-		     * @param {string} code content to render within fenced code block
-		     * @param {string} lang (optional) language to syntax highlight code
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addCodeBlock(code, lang) {
-		        const attrs = Object.assign({}, (lang && { lang }));
-		        const element = this.wrap('pre', this.wrap('code', code), attrs);
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds an HTML list to the summary buffer
-		     *
-		     * @param {string[]} items list of items to render
-		     * @param {boolean} [ordered=false] (optional) if the rendered list should be ordered or not (default: false)
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addList(items, ordered = false) {
-		        const tag = ordered ? 'ol' : 'ul';
-		        const listItems = items.map(item => this.wrap('li', item)).join('');
-		        const element = this.wrap(tag, listItems);
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds an HTML table to the summary buffer
-		     *
-		     * @param {SummaryTableCell[]} rows table rows
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addTable(rows) {
-		        const tableBody = rows
-		            .map(row => {
-		            const cells = row
-		                .map(cell => {
-		                if (typeof cell === 'string') {
-		                    return this.wrap('td', cell);
-		                }
-		                const { header, data, colspan, rowspan } = cell;
-		                const tag = header ? 'th' : 'td';
-		                const attrs = Object.assign(Object.assign({}, (colspan && { colspan })), (rowspan && { rowspan }));
-		                return this.wrap(tag, data, attrs);
-		            })
-		                .join('');
-		            return this.wrap('tr', cells);
-		        })
-		            .join('');
-		        const element = this.wrap('table', tableBody);
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds a collapsable HTML details element to the summary buffer
-		     *
-		     * @param {string} label text for the closed state
-		     * @param {string} content collapsable content
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addDetails(label, content) {
-		        const element = this.wrap('details', this.wrap('summary', label) + content);
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds an HTML image tag to the summary buffer
-		     *
-		     * @param {string} src path to the image you to embed
-		     * @param {string} alt text description of the image
-		     * @param {SummaryImageOptions} options (optional) addition image attributes
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addImage(src, alt, options) {
-		        const { width, height } = options || {};
-		        const attrs = Object.assign(Object.assign({}, (width && { width })), (height && { height }));
-		        const element = this.wrap('img', null, Object.assign({ src, alt }, attrs));
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds an HTML section heading element
-		     *
-		     * @param {string} text heading text
-		     * @param {number | string} [level=1] (optional) the heading level, default: 1
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addHeading(text, level) {
-		        const tag = `h${level}`;
-		        const allowedTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)
-		            ? tag
-		            : 'h1';
-		        const element = this.wrap(allowedTag, text);
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds an HTML thematic break (<hr>) to the summary buffer
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addSeparator() {
-		        const element = this.wrap('hr', null);
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds an HTML line break (<br>) to the summary buffer
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addBreak() {
-		        const element = this.wrap('br', null);
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds an HTML blockquote to the summary buffer
-		     *
-		     * @param {string} text quote text
-		     * @param {string} cite (optional) citation url
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addQuote(text, cite) {
-		        const attrs = Object.assign({}, (cite && { cite }));
-		        const element = this.wrap('blockquote', text, attrs);
-		        return this.addRaw(element).addEOL();
-		    }
-		    /**
-		     * Adds an HTML anchor tag to the summary buffer
-		     *
-		     * @param {string} text link text/content
-		     * @param {string} href hyperlink
-		     *
-		     * @returns {Summary} summary instance
-		     */
-		    addLink(text, href) {
-		        const element = this.wrap('a', text, { href });
-		        return this.addRaw(element).addEOL();
-		    }
-		}
-		const _summary = new Summary();
-		/**
-		 * @deprecated use `core.summary`
-		 */
-		exports$1.markdownSummary = _summary;
-		exports$1.summary = _summary;
-		
-	} (summary));
-	return summary;
+/**
+ * Writes debug message to user log
+ * @param message debug message
+ */
+function debug(message) {
+    issueCommand('debug', {}, message);
 }
-
-var pathUtils = {};
-
-var hasRequiredPathUtils;
-
-function requirePathUtils () {
-	if (hasRequiredPathUtils) return pathUtils;
-	hasRequiredPathUtils = 1;
-	var __createBinding = (pathUtils && pathUtils.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    var desc = Object.getOwnPropertyDescriptor(m, k);
-	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-	      desc = { enumerable: true, get: function() { return m[k]; } };
-	    }
-	    Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    o[k2] = m[k];
-	}));
-	var __setModuleDefault = (pathUtils && pathUtils.__setModuleDefault) || (Object.create ? (function(o, v) {
-	    Object.defineProperty(o, "default", { enumerable: true, value: v });
-	}) : function(o, v) {
-	    o["default"] = v;
-	});
-	var __importStar = (pathUtils && pathUtils.__importStar) || (function () {
-	    var ownKeys = function(o) {
-	        ownKeys = Object.getOwnPropertyNames || function (o) {
-	            var ar = [];
-	            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-	            return ar;
-	        };
-	        return ownKeys(o);
-	    };
-	    return function (mod) {
-	        if (mod && mod.__esModule) return mod;
-	        var result = {};
-	        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-	        __setModuleDefault(result, mod);
-	        return result;
-	    };
-	})();
-	Object.defineProperty(pathUtils, "__esModule", { value: true });
-	pathUtils.toPosixPath = toPosixPath;
-	pathUtils.toWin32Path = toWin32Path;
-	pathUtils.toPlatformPath = toPlatformPath;
-	const path = __importStar(require$$1$2);
-	/**
-	 * toPosixPath converts the given path to the posix form. On Windows, \\ will be
-	 * replaced with /.
-	 *
-	 * @param pth. Path to transform.
-	 * @return string Posix path.
-	 */
-	function toPosixPath(pth) {
-	    return pth.replace(/[\\]/g, '/');
-	}
-	/**
-	 * toWin32Path converts the given path to the win32 form. On Linux, / will be
-	 * replaced with \\.
-	 *
-	 * @param pth. Path to transform.
-	 * @return string Win32 path.
-	 */
-	function toWin32Path(pth) {
-	    return pth.replace(/[/]/g, '\\');
-	}
-	/**
-	 * toPlatformPath converts the given path to a platform-specific path. It does
-	 * this by replacing instances of / and \ with the platform-specific path
-	 * separator.
-	 *
-	 * @param pth The path to platformize.
-	 * @return string The platform-specific path.
-	 */
-	function toPlatformPath(pth) {
-	    return pth.replace(/[/\\]/g, path.sep);
-	}
-	
-	return pathUtils;
+/**
+ * Adds an error issue
+ * @param message error issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function error(message, properties = {}) {
+    issueCommand('error', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
-
-var platform = {};
-
-var exec = {};
-
-var toolrunner = {};
-
-var io = {};
-
-var ioUtil = {};
-
-var hasRequiredIoUtil;
-
-function requireIoUtil () {
-	if (hasRequiredIoUtil) return ioUtil;
-	hasRequiredIoUtil = 1;
-	(function (exports$1) {
-		var __createBinding = (ioUtil && ioUtil.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-		    if (k2 === undefined) k2 = k;
-		    var desc = Object.getOwnPropertyDescriptor(m, k);
-		    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-		      desc = { enumerable: true, get: function() { return m[k]; } };
-		    }
-		    Object.defineProperty(o, k2, desc);
-		}) : (function(o, m, k, k2) {
-		    if (k2 === undefined) k2 = k;
-		    o[k2] = m[k];
-		}));
-		var __setModuleDefault = (ioUtil && ioUtil.__setModuleDefault) || (Object.create ? (function(o, v) {
-		    Object.defineProperty(o, "default", { enumerable: true, value: v });
-		}) : function(o, v) {
-		    o["default"] = v;
-		});
-		var __importStar = (ioUtil && ioUtil.__importStar) || (function () {
-		    var ownKeys = function(o) {
-		        ownKeys = Object.getOwnPropertyNames || function (o) {
-		            var ar = [];
-		            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-		            return ar;
-		        };
-		        return ownKeys(o);
-		    };
-		    return function (mod) {
-		        if (mod && mod.__esModule) return mod;
-		        var result = {};
-		        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-		        __setModuleDefault(result, mod);
-		        return result;
-		    };
-		})();
-		var __awaiter = (ioUtil && ioUtil.__awaiter) || function (thisArg, _arguments, P, generator) {
-		    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-		    return new (P || (P = Promise))(function (resolve, reject) {
-		        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-		        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-		        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-		        step((generator = generator.apply(thisArg, _arguments || [])).next());
-		    });
-		};
-		var _a;
-		Object.defineProperty(exports$1, "__esModule", { value: true });
-		exports$1.READONLY = exports$1.UV_FS_O_EXLOCK = exports$1.IS_WINDOWS = exports$1.unlink = exports$1.symlink = exports$1.stat = exports$1.rmdir = exports$1.rm = exports$1.rename = exports$1.readdir = exports$1.open = exports$1.mkdir = exports$1.lstat = exports$1.copyFile = exports$1.chmod = void 0;
-		exports$1.readlink = readlink;
-		exports$1.exists = exists;
-		exports$1.isDirectory = isDirectory;
-		exports$1.isRooted = isRooted;
-		exports$1.tryGetExecutablePath = tryGetExecutablePath;
-		exports$1.getCmdPath = getCmdPath;
-		const fs = __importStar(require$$1);
-		const path = __importStar(require$$1$2);
-		_a = fs.promises
-		// export const {open} = 'fs'
-		, exports$1.chmod = _a.chmod, exports$1.copyFile = _a.copyFile, exports$1.lstat = _a.lstat, exports$1.mkdir = _a.mkdir, exports$1.open = _a.open, exports$1.readdir = _a.readdir, exports$1.rename = _a.rename, exports$1.rm = _a.rm, exports$1.rmdir = _a.rmdir, exports$1.stat = _a.stat, exports$1.symlink = _a.symlink, exports$1.unlink = _a.unlink;
-		// export const {open} = 'fs'
-		exports$1.IS_WINDOWS = process.platform === 'win32';
-		/**
-		 * Custom implementation of readlink to ensure Windows junctions
-		 * maintain trailing backslash for backward compatibility with Node.js < 24
-		 *
-		 * In Node.js 20, Windows junctions (directory symlinks) always returned paths
-		 * with trailing backslashes. Node.js 24 removed this behavior, which breaks
-		 * code that relied on this format for path operations.
-		 *
-		 * This implementation restores the Node 20 behavior by adding a trailing
-		 * backslash to all junction results on Windows.
-		 */
-		function readlink(fsPath) {
-		    return __awaiter(this, void 0, void 0, function* () {
-		        const result = yield fs.promises.readlink(fsPath);
-		        // On Windows, restore Node 20 behavior: add trailing backslash to all results
-		        // since junctions on Windows are always directory links
-		        if (exports$1.IS_WINDOWS && !result.endsWith('\\')) {
-		            return `${result}\\`;
-		        }
-		        return result;
-		    });
-		}
-		// See https://github.com/nodejs/node/blob/d0153aee367422d0858105abec186da4dff0a0c5/deps/uv/include/uv/win.h#L691
-		exports$1.UV_FS_O_EXLOCK = 0x10000000;
-		exports$1.READONLY = fs.constants.O_RDONLY;
-		function exists(fsPath) {
-		    return __awaiter(this, void 0, void 0, function* () {
-		        try {
-		            yield (0, exports$1.stat)(fsPath);
-		        }
-		        catch (err) {
-		            if (err.code === 'ENOENT') {
-		                return false;
-		            }
-		            throw err;
-		        }
-		        return true;
-		    });
-		}
-		function isDirectory(fsPath_1) {
-		    return __awaiter(this, arguments, void 0, function* (fsPath, useStat = false) {
-		        const stats = useStat ? yield (0, exports$1.stat)(fsPath) : yield (0, exports$1.lstat)(fsPath);
-		        return stats.isDirectory();
-		    });
-		}
-		/**
-		 * On OSX/Linux, true if path starts with '/'. On Windows, true for paths like:
-		 * \, \hello, \\hello\share, C:, and C:\hello (and corresponding alternate separator cases).
-		 */
-		function isRooted(p) {
-		    p = normalizeSeparators(p);
-		    if (!p) {
-		        throw new Error('isRooted() parameter "p" cannot be empty');
-		    }
-		    if (exports$1.IS_WINDOWS) {
-		        return (p.startsWith('\\') || /^[A-Z]:/i.test(p) // e.g. \ or \hello or \\hello
-		        ); // e.g. C: or C:\hello
-		    }
-		    return p.startsWith('/');
-		}
-		/**
-		 * Best effort attempt to determine whether a file exists and is executable.
-		 * @param filePath    file path to check
-		 * @param extensions  additional file extensions to try
-		 * @return if file exists and is executable, returns the file path. otherwise empty string.
-		 */
-		function tryGetExecutablePath(filePath, extensions) {
-		    return __awaiter(this, void 0, void 0, function* () {
-		        let stats = undefined;
-		        try {
-		            // test file exists
-		            stats = yield (0, exports$1.stat)(filePath);
-		        }
-		        catch (err) {
-		            if (err.code !== 'ENOENT') {
-		                // eslint-disable-next-line no-console
-		                console.log(`Unexpected error attempting to determine if executable file exists '${filePath}': ${err}`);
-		            }
-		        }
-		        if (stats && stats.isFile()) {
-		            if (exports$1.IS_WINDOWS) {
-		                // on Windows, test for valid extension
-		                const upperExt = path.extname(filePath).toUpperCase();
-		                if (extensions.some(validExt => validExt.toUpperCase() === upperExt)) {
-		                    return filePath;
-		                }
-		            }
-		            else {
-		                if (isUnixExecutable(stats)) {
-		                    return filePath;
-		                }
-		            }
-		        }
-		        // try each extension
-		        const originalFilePath = filePath;
-		        for (const extension of extensions) {
-		            filePath = originalFilePath + extension;
-		            stats = undefined;
-		            try {
-		                stats = yield (0, exports$1.stat)(filePath);
-		            }
-		            catch (err) {
-		                if (err.code !== 'ENOENT') {
-		                    // eslint-disable-next-line no-console
-		                    console.log(`Unexpected error attempting to determine if executable file exists '${filePath}': ${err}`);
-		                }
-		            }
-		            if (stats && stats.isFile()) {
-		                if (exports$1.IS_WINDOWS) {
-		                    // preserve the case of the actual file (since an extension was appended)
-		                    try {
-		                        const directory = path.dirname(filePath);
-		                        const upperName = path.basename(filePath).toUpperCase();
-		                        for (const actualName of yield (0, exports$1.readdir)(directory)) {
-		                            if (upperName === actualName.toUpperCase()) {
-		                                filePath = path.join(directory, actualName);
-		                                break;
-		                            }
-		                        }
-		                    }
-		                    catch (err) {
-		                        // eslint-disable-next-line no-console
-		                        console.log(`Unexpected error attempting to determine the actual case of the file '${filePath}': ${err}`);
-		                    }
-		                    return filePath;
-		                }
-		                else {
-		                    if (isUnixExecutable(stats)) {
-		                        return filePath;
-		                    }
-		                }
-		            }
-		        }
-		        return '';
-		    });
-		}
-		function normalizeSeparators(p) {
-		    p = p || '';
-		    if (exports$1.IS_WINDOWS) {
-		        // convert slashes on Windows
-		        p = p.replace(/\//g, '\\');
-		        // remove redundant slashes
-		        return p.replace(/\\\\+/g, '\\');
-		    }
-		    // remove redundant slashes
-		    return p.replace(/\/\/+/g, '/');
-		}
-		// on Mac/Linux, test the execute bit
-		//     R   W  X  R  W X R W X
-		//   256 128 64 32 16 8 4 2 1
-		function isUnixExecutable(stats) {
-		    return ((stats.mode & 1) > 0 ||
-		        ((stats.mode & 8) > 0 &&
-		            process.getgid !== undefined &&
-		            stats.gid === process.getgid()) ||
-		        ((stats.mode & 64) > 0 &&
-		            process.getuid !== undefined &&
-		            stats.uid === process.getuid()));
-		}
-		// Get the path of cmd.exe in windows
-		function getCmdPath() {
-		    var _a;
-		    return (_a = process.env['COMSPEC']) !== null && _a !== void 0 ? _a : `cmd.exe`;
-		}
-		
-	} (ioUtil));
-	return ioUtil;
+/**
+ * Adds a warning issue
+ * @param message warning issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function warning(message, properties = {}) {
+    issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
-
-var hasRequiredIo;
-
-function requireIo () {
-	if (hasRequiredIo) return io;
-	hasRequiredIo = 1;
-	var __createBinding = (io && io.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    var desc = Object.getOwnPropertyDescriptor(m, k);
-	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-	      desc = { enumerable: true, get: function() { return m[k]; } };
-	    }
-	    Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    o[k2] = m[k];
-	}));
-	var __setModuleDefault = (io && io.__setModuleDefault) || (Object.create ? (function(o, v) {
-	    Object.defineProperty(o, "default", { enumerable: true, value: v });
-	}) : function(o, v) {
-	    o["default"] = v;
-	});
-	var __importStar = (io && io.__importStar) || (function () {
-	    var ownKeys = function(o) {
-	        ownKeys = Object.getOwnPropertyNames || function (o) {
-	            var ar = [];
-	            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-	            return ar;
-	        };
-	        return ownKeys(o);
-	    };
-	    return function (mod) {
-	        if (mod && mod.__esModule) return mod;
-	        var result = {};
-	        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-	        __setModuleDefault(result, mod);
-	        return result;
-	    };
-	})();
-	var __awaiter = (io && io.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(io, "__esModule", { value: true });
-	io.cp = cp;
-	io.mv = mv;
-	io.rmRF = rmRF;
-	io.mkdirP = mkdirP;
-	io.which = which;
-	io.findInPath = findInPath;
-	const assert_1 = require$$5$1;
-	const path = __importStar(require$$1$2);
-	const ioUtil = __importStar(requireIoUtil());
-	/**
-	 * Copies a file or folder.
-	 * Based off of shelljs - https://github.com/shelljs/shelljs/blob/9237f66c52e5daa40458f94f9565e18e8132f5a6/src/cp.js
-	 *
-	 * @param     source    source path
-	 * @param     dest      destination path
-	 * @param     options   optional. See CopyOptions.
-	 */
-	function cp(source_1, dest_1) {
-	    return __awaiter(this, arguments, void 0, function* (source, dest, options = {}) {
-	        const { force, recursive, copySourceDirectory } = readCopyOptions(options);
-	        const destStat = (yield ioUtil.exists(dest)) ? yield ioUtil.stat(dest) : null;
-	        // Dest is an existing file, but not forcing
-	        if (destStat && destStat.isFile() && !force) {
-	            return;
-	        }
-	        // If dest is an existing directory, should copy inside.
-	        const newDest = destStat && destStat.isDirectory() && copySourceDirectory
-	            ? path.join(dest, path.basename(source))
-	            : dest;
-	        if (!(yield ioUtil.exists(source))) {
-	            throw new Error(`no such file or directory: ${source}`);
-	        }
-	        const sourceStat = yield ioUtil.stat(source);
-	        if (sourceStat.isDirectory()) {
-	            if (!recursive) {
-	                throw new Error(`Failed to copy. ${source} is a directory, but tried to copy without recursive flag.`);
-	            }
-	            else {
-	                yield cpDirRecursive(source, newDest, 0, force);
-	            }
-	        }
-	        else {
-	            if (path.relative(source, newDest) === '') {
-	                // a file cannot be copied to itself
-	                throw new Error(`'${newDest}' and '${source}' are the same file`);
-	            }
-	            yield copyFile(source, newDest, force);
-	        }
-	    });
-	}
-	/**
-	 * Moves a path.
-	 *
-	 * @param     source    source path
-	 * @param     dest      destination path
-	 * @param     options   optional. See MoveOptions.
-	 */
-	function mv(source_1, dest_1) {
-	    return __awaiter(this, arguments, void 0, function* (source, dest, options = {}) {
-	        if (yield ioUtil.exists(dest)) {
-	            let destExists = true;
-	            if (yield ioUtil.isDirectory(dest)) {
-	                // If dest is directory copy src into dest
-	                dest = path.join(dest, path.basename(source));
-	                destExists = yield ioUtil.exists(dest);
-	            }
-	            if (destExists) {
-	                if (options.force == null || options.force) {
-	                    yield rmRF(dest);
-	                }
-	                else {
-	                    throw new Error('Destination already exists');
-	                }
-	            }
-	        }
-	        yield mkdirP(path.dirname(dest));
-	        yield ioUtil.rename(source, dest);
-	    });
-	}
-	/**
-	 * Remove a path recursively with force
-	 *
-	 * @param inputPath path to remove
-	 */
-	function rmRF(inputPath) {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        if (ioUtil.IS_WINDOWS) {
-	            // Check for invalid characters
-	            // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-	            if (/[*"<>|]/.test(inputPath)) {
-	                throw new Error('File path must not contain `*`, `"`, `<`, `>` or `|` on Windows');
-	            }
-	        }
-	        try {
-	            // note if path does not exist, error is silent
-	            yield ioUtil.rm(inputPath, {
-	                force: true,
-	                maxRetries: 3,
-	                recursive: true,
-	                retryDelay: 300
-	            });
-	        }
-	        catch (err) {
-	            throw new Error(`File was unable to be removed ${err}`);
-	        }
-	    });
-	}
-	/**
-	 * Make a directory.  Creates the full path with folders in between
-	 * Will throw if it fails
-	 *
-	 * @param   fsPath        path to create
-	 * @returns Promise<void>
-	 */
-	function mkdirP(fsPath) {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        (0, assert_1.ok)(fsPath, 'a path argument must be provided');
-	        yield ioUtil.mkdir(fsPath, { recursive: true });
-	    });
-	}
-	/**
-	 * Returns path of a tool had the tool actually been invoked.  Resolves via paths.
-	 * If you check and the tool does not exist, it will throw.
-	 *
-	 * @param     tool              name of the tool
-	 * @param     check             whether to check if tool exists
-	 * @returns   Promise<string>   path to tool
-	 */
-	function which(tool, check) {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        if (!tool) {
-	            throw new Error("parameter 'tool' is required");
-	        }
-	        // recursive when check=true
-	        if (check) {
-	            const result = yield which(tool, false);
-	            if (!result) {
-	                if (ioUtil.IS_WINDOWS) {
-	                    throw new Error(`Unable to locate executable file: ${tool}. Please verify either the file path exists or the file can be found within a directory specified by the PATH environment variable. Also verify the file has a valid extension for an executable file.`);
-	                }
-	                else {
-	                    throw new Error(`Unable to locate executable file: ${tool}. Please verify either the file path exists or the file can be found within a directory specified by the PATH environment variable. Also check the file mode to verify the file is executable.`);
-	                }
-	            }
-	            return result;
-	        }
-	        const matches = yield findInPath(tool);
-	        if (matches && matches.length > 0) {
-	            return matches[0];
-	        }
-	        return '';
-	    });
-	}
-	/**
-	 * Returns a list of all occurrences of the given tool on the system path.
-	 *
-	 * @returns   Promise<string[]>  the paths of the tool
-	 */
-	function findInPath(tool) {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        if (!tool) {
-	            throw new Error("parameter 'tool' is required");
-	        }
-	        // build the list of extensions to try
-	        const extensions = [];
-	        if (ioUtil.IS_WINDOWS && process.env['PATHEXT']) {
-	            for (const extension of process.env['PATHEXT'].split(path.delimiter)) {
-	                if (extension) {
-	                    extensions.push(extension);
-	                }
-	            }
-	        }
-	        // if it's rooted, return it if exists. otherwise return empty.
-	        if (ioUtil.isRooted(tool)) {
-	            const filePath = yield ioUtil.tryGetExecutablePath(tool, extensions);
-	            if (filePath) {
-	                return [filePath];
-	            }
-	            return [];
-	        }
-	        // if any path separators, return empty
-	        if (tool.includes(path.sep)) {
-	            return [];
-	        }
-	        // build the list of directories
-	        //
-	        // Note, technically "where" checks the current directory on Windows. From a toolkit perspective,
-	        // it feels like we should not do this. Checking the current directory seems like more of a use
-	        // case of a shell, and the which() function exposed by the toolkit should strive for consistency
-	        // across platforms.
-	        const directories = [];
-	        if (process.env.PATH) {
-	            for (const p of process.env.PATH.split(path.delimiter)) {
-	                if (p) {
-	                    directories.push(p);
-	                }
-	            }
-	        }
-	        // find all matches
-	        const matches = [];
-	        for (const directory of directories) {
-	            const filePath = yield ioUtil.tryGetExecutablePath(path.join(directory, tool), extensions);
-	            if (filePath) {
-	                matches.push(filePath);
-	            }
-	        }
-	        return matches;
-	    });
-	}
-	function readCopyOptions(options) {
-	    const force = options.force == null ? true : options.force;
-	    const recursive = Boolean(options.recursive);
-	    const copySourceDirectory = options.copySourceDirectory == null
-	        ? true
-	        : Boolean(options.copySourceDirectory);
-	    return { force, recursive, copySourceDirectory };
-	}
-	function cpDirRecursive(sourceDir, destDir, currentDepth, force) {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        // Ensure there is not a run away recursive copy
-	        if (currentDepth >= 255)
-	            return;
-	        currentDepth++;
-	        yield mkdirP(destDir);
-	        const files = yield ioUtil.readdir(sourceDir);
-	        for (const fileName of files) {
-	            const srcFile = `${sourceDir}/${fileName}`;
-	            const destFile = `${destDir}/${fileName}`;
-	            const srcFileStat = yield ioUtil.lstat(srcFile);
-	            if (srcFileStat.isDirectory()) {
-	                // Recurse
-	                yield cpDirRecursive(srcFile, destFile, currentDepth, force);
-	            }
-	            else {
-	                yield copyFile(srcFile, destFile, force);
-	            }
-	        }
-	        // Change the mode for the newly created directory
-	        yield ioUtil.chmod(destDir, (yield ioUtil.stat(sourceDir)).mode);
-	    });
-	}
-	// Buffered file copy
-	function copyFile(srcFile, destFile, force) {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        if ((yield ioUtil.lstat(srcFile)).isSymbolicLink()) {
-	            // unlink/re-link it
-	            try {
-	                yield ioUtil.lstat(destFile);
-	                yield ioUtil.unlink(destFile);
-	            }
-	            catch (e) {
-	                // Try to override file permission
-	                if (e.code === 'EPERM') {
-	                    yield ioUtil.chmod(destFile, '0666');
-	                    yield ioUtil.unlink(destFile);
-	                }
-	                // other errors = it doesn't exist, no work to do
-	            }
-	            // Copy over symlink
-	            const symlinkFull = yield ioUtil.readlink(srcFile);
-	            yield ioUtil.symlink(symlinkFull, destFile, ioUtil.IS_WINDOWS ? 'junction' : null);
-	        }
-	        else if (!(yield ioUtil.exists(destFile)) || force) {
-	            yield ioUtil.copyFile(srcFile, destFile);
-	        }
-	    });
-	}
-	
-	return io;
-}
-
-var hasRequiredToolrunner;
-
-function requireToolrunner () {
-	if (hasRequiredToolrunner) return toolrunner;
-	hasRequiredToolrunner = 1;
-	var __createBinding = (toolrunner && toolrunner.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    var desc = Object.getOwnPropertyDescriptor(m, k);
-	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-	      desc = { enumerable: true, get: function() { return m[k]; } };
-	    }
-	    Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    o[k2] = m[k];
-	}));
-	var __setModuleDefault = (toolrunner && toolrunner.__setModuleDefault) || (Object.create ? (function(o, v) {
-	    Object.defineProperty(o, "default", { enumerable: true, value: v });
-	}) : function(o, v) {
-	    o["default"] = v;
-	});
-	var __importStar = (toolrunner && toolrunner.__importStar) || (function () {
-	    var ownKeys = function(o) {
-	        ownKeys = Object.getOwnPropertyNames || function (o) {
-	            var ar = [];
-	            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-	            return ar;
-	        };
-	        return ownKeys(o);
-	    };
-	    return function (mod) {
-	        if (mod && mod.__esModule) return mod;
-	        var result = {};
-	        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-	        __setModuleDefault(result, mod);
-	        return result;
-	    };
-	})();
-	var __awaiter = (toolrunner && toolrunner.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(toolrunner, "__esModule", { value: true });
-	toolrunner.ToolRunner = void 0;
-	toolrunner.argStringToArray = argStringToArray;
-	const os = __importStar(require$$0);
-	const events = __importStar(require$$4);
-	const child = __importStar(require$$2$1);
-	const path = __importStar(require$$1$2);
-	const io = __importStar(requireIo());
-	const ioUtil = __importStar(requireIoUtil());
-	const timers_1 = require$$6$1;
-	/* eslint-disable @typescript-eslint/unbound-method */
-	const IS_WINDOWS = process.platform === 'win32';
-	/*
-	 * Class for running command line tools. Handles quoting and arg parsing in a platform agnostic way.
-	 */
-	class ToolRunner extends events.EventEmitter {
-	    constructor(toolPath, args, options) {
-	        super();
-	        if (!toolPath) {
-	            throw new Error("Parameter 'toolPath' cannot be null or empty.");
-	        }
-	        this.toolPath = toolPath;
-	        this.args = args || [];
-	        this.options = options || {};
-	    }
-	    _debug(message) {
-	        if (this.options.listeners && this.options.listeners.debug) {
-	            this.options.listeners.debug(message);
-	        }
-	    }
-	    _getCommandString(options, noPrefix) {
-	        const toolPath = this._getSpawnFileName();
-	        const args = this._getSpawnArgs(options);
-	        let cmd = noPrefix ? '' : '[command]'; // omit prefix when piped to a second tool
-	        if (IS_WINDOWS) {
-	            // Windows + cmd file
-	            if (this._isCmdFile()) {
-	                cmd += toolPath;
-	                for (const a of args) {
-	                    cmd += ` ${a}`;
-	                }
-	            }
-	            // Windows + verbatim
-	            else if (options.windowsVerbatimArguments) {
-	                cmd += `"${toolPath}"`;
-	                for (const a of args) {
-	                    cmd += ` ${a}`;
-	                }
-	            }
-	            // Windows (regular)
-	            else {
-	                cmd += this._windowsQuoteCmdArg(toolPath);
-	                for (const a of args) {
-	                    cmd += ` ${this._windowsQuoteCmdArg(a)}`;
-	                }
-	            }
-	        }
-	        else {
-	            // OSX/Linux - this can likely be improved with some form of quoting.
-	            // creating processes on Unix is fundamentally different than Windows.
-	            // on Unix, execvp() takes an arg array.
-	            cmd += toolPath;
-	            for (const a of args) {
-	                cmd += ` ${a}`;
-	            }
-	        }
-	        return cmd;
-	    }
-	    _processLineBuffer(data, strBuffer, onLine) {
-	        try {
-	            let s = strBuffer + data.toString();
-	            let n = s.indexOf(os.EOL);
-	            while (n > -1) {
-	                const line = s.substring(0, n);
-	                onLine(line);
-	                // the rest of the string ...
-	                s = s.substring(n + os.EOL.length);
-	                n = s.indexOf(os.EOL);
-	            }
-	            return s;
-	        }
-	        catch (err) {
-	            // streaming lines to console is best effort.  Don't fail a build.
-	            this._debug(`error processing line. Failed with error ${err}`);
-	            return '';
-	        }
-	    }
-	    _getSpawnFileName() {
-	        if (IS_WINDOWS) {
-	            if (this._isCmdFile()) {
-	                return process.env['COMSPEC'] || 'cmd.exe';
-	            }
-	        }
-	        return this.toolPath;
-	    }
-	    _getSpawnArgs(options) {
-	        if (IS_WINDOWS) {
-	            if (this._isCmdFile()) {
-	                let argline = `/D /S /C "${this._windowsQuoteCmdArg(this.toolPath)}`;
-	                for (const a of this.args) {
-	                    argline += ' ';
-	                    argline += options.windowsVerbatimArguments
-	                        ? a
-	                        : this._windowsQuoteCmdArg(a);
-	                }
-	                argline += '"';
-	                return [argline];
-	            }
-	        }
-	        return this.args;
-	    }
-	    _endsWith(str, end) {
-	        return str.endsWith(end);
-	    }
-	    _isCmdFile() {
-	        const upperToolPath = this.toolPath.toUpperCase();
-	        return (this._endsWith(upperToolPath, '.CMD') ||
-	            this._endsWith(upperToolPath, '.BAT'));
-	    }
-	    _windowsQuoteCmdArg(arg) {
-	        // for .exe, apply the normal quoting rules that libuv applies
-	        if (!this._isCmdFile()) {
-	            return this._uvQuoteCmdArg(arg);
-	        }
-	        // otherwise apply quoting rules specific to the cmd.exe command line parser.
-	        // the libuv rules are generic and are not designed specifically for cmd.exe
-	        // command line parser.
-	        //
-	        // for a detailed description of the cmd.exe command line parser, refer to
-	        // http://stackoverflow.com/questions/4094699/how-does-the-windows-command-interpreter-cmd-exe-parse-scripts/7970912#7970912
-	        // need quotes for empty arg
-	        if (!arg) {
-	            return '""';
-	        }
-	        // determine whether the arg needs to be quoted
-	        const cmdSpecialChars = [
-	            ' ',
-	            '\t',
-	            '&',
-	            '(',
-	            ')',
-	            '[',
-	            ']',
-	            '{',
-	            '}',
-	            '^',
-	            '=',
-	            ';',
-	            '!',
-	            "'",
-	            '+',
-	            ',',
-	            '`',
-	            '~',
-	            '|',
-	            '<',
-	            '>',
-	            '"'
-	        ];
-	        let needsQuotes = false;
-	        for (const char of arg) {
-	            if (cmdSpecialChars.some(x => x === char)) {
-	                needsQuotes = true;
-	                break;
-	            }
-	        }
-	        // short-circuit if quotes not needed
-	        if (!needsQuotes) {
-	            return arg;
-	        }
-	        // the following quoting rules are very similar to the rules that by libuv applies.
-	        //
-	        // 1) wrap the string in quotes
-	        //
-	        // 2) double-up quotes - i.e. " => ""
-	        //
-	        //    this is different from the libuv quoting rules. libuv replaces " with \", which unfortunately
-	        //    doesn't work well with a cmd.exe command line.
-	        //
-	        //    note, replacing " with "" also works well if the arg is passed to a downstream .NET console app.
-	        //    for example, the command line:
-	        //          foo.exe "myarg:""my val"""
-	        //    is parsed by a .NET console app into an arg array:
-	        //          [ "myarg:\"my val\"" ]
-	        //    which is the same end result when applying libuv quoting rules. although the actual
-	        //    command line from libuv quoting rules would look like:
-	        //          foo.exe "myarg:\"my val\""
-	        //
-	        // 3) double-up slashes that precede a quote,
-	        //    e.g.  hello \world    => "hello \world"
-	        //          hello\"world    => "hello\\""world"
-	        //          hello\\"world   => "hello\\\\""world"
-	        //          hello world\    => "hello world\\"
-	        //
-	        //    technically this is not required for a cmd.exe command line, or the batch argument parser.
-	        //    the reasons for including this as a .cmd quoting rule are:
-	        //
-	        //    a) this is optimized for the scenario where the argument is passed from the .cmd file to an
-	        //       external program. many programs (e.g. .NET console apps) rely on the slash-doubling rule.
-	        //
-	        //    b) it's what we've been doing previously (by deferring to node default behavior) and we
-	        //       haven't heard any complaints about that aspect.
-	        //
-	        // note, a weakness of the quoting rules chosen here, is that % is not escaped. in fact, % cannot be
-	        // escaped when used on the command line directly - even though within a .cmd file % can be escaped
-	        // by using %%.
-	        //
-	        // the saving grace is, on the command line, %var% is left as-is if var is not defined. this contrasts
-	        // the line parsing rules within a .cmd file, where if var is not defined it is replaced with nothing.
-	        //
-	        // one option that was explored was replacing % with ^% - i.e. %var% => ^%var^%. this hack would
-	        // often work, since it is unlikely that var^ would exist, and the ^ character is removed when the
-	        // variable is used. the problem, however, is that ^ is not removed when %* is used to pass the args
-	        // to an external program.
-	        //
-	        // an unexplored potential solution for the % escaping problem, is to create a wrapper .cmd file.
-	        // % can be escaped within a .cmd file.
-	        let reverse = '"';
-	        let quoteHit = true;
-	        for (let i = arg.length; i > 0; i--) {
-	            // walk the string in reverse
-	            reverse += arg[i - 1];
-	            if (quoteHit && arg[i - 1] === '\\') {
-	                reverse += '\\'; // double the slash
-	            }
-	            else if (arg[i - 1] === '"') {
-	                quoteHit = true;
-	                reverse += '"'; // double the quote
-	            }
-	            else {
-	                quoteHit = false;
-	            }
-	        }
-	        reverse += '"';
-	        return reverse.split('').reverse().join('');
-	    }
-	    _uvQuoteCmdArg(arg) {
-	        // Tool runner wraps child_process.spawn() and needs to apply the same quoting as
-	        // Node in certain cases where the undocumented spawn option windowsVerbatimArguments
-	        // is used.
-	        //
-	        // Since this function is a port of quote_cmd_arg from Node 4.x (technically, lib UV,
-	        // see https://github.com/nodejs/node/blob/v4.x/deps/uv/src/win/process.c for details),
-	        // pasting copyright notice from Node within this function:
-	        //
-	        //      Copyright Joyent, Inc. and other Node contributors. All rights reserved.
-	        //
-	        //      Permission is hereby granted, free of charge, to any person obtaining a copy
-	        //      of this software and associated documentation files (the "Software"), to
-	        //      deal in the Software without restriction, including without limitation the
-	        //      rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-	        //      sell copies of the Software, and to permit persons to whom the Software is
-	        //      furnished to do so, subject to the following conditions:
-	        //
-	        //      The above copyright notice and this permission notice shall be included in
-	        //      all copies or substantial portions of the Software.
-	        //
-	        //      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	        //      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	        //      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	        //      AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	        //      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-	        //      FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-	        //      IN THE SOFTWARE.
-	        if (!arg) {
-	            // Need double quotation for empty argument
-	            return '""';
-	        }
-	        if (!arg.includes(' ') && !arg.includes('\t') && !arg.includes('"')) {
-	            // No quotation needed
-	            return arg;
-	        }
-	        if (!arg.includes('"') && !arg.includes('\\')) {
-	            // No embedded double quotes or backslashes, so I can just wrap
-	            // quote marks around the whole thing.
-	            return `"${arg}"`;
-	        }
-	        // Expected input/output:
-	        //   input : hello"world
-	        //   output: "hello\"world"
-	        //   input : hello""world
-	        //   output: "hello\"\"world"
-	        //   input : hello\world
-	        //   output: hello\world
-	        //   input : hello\\world
-	        //   output: hello\\world
-	        //   input : hello\"world
-	        //   output: "hello\\\"world"
-	        //   input : hello\\"world
-	        //   output: "hello\\\\\"world"
-	        //   input : hello world\
-	        //   output: "hello world\\" - note the comment in libuv actually reads "hello world\"
-	        //                             but it appears the comment is wrong, it should be "hello world\\"
-	        let reverse = '"';
-	        let quoteHit = true;
-	        for (let i = arg.length; i > 0; i--) {
-	            // walk the string in reverse
-	            reverse += arg[i - 1];
-	            if (quoteHit && arg[i - 1] === '\\') {
-	                reverse += '\\';
-	            }
-	            else if (arg[i - 1] === '"') {
-	                quoteHit = true;
-	                reverse += '\\';
-	            }
-	            else {
-	                quoteHit = false;
-	            }
-	        }
-	        reverse += '"';
-	        return reverse.split('').reverse().join('');
-	    }
-	    _cloneExecOptions(options) {
-	        options = options || {};
-	        const result = {
-	            cwd: options.cwd || process.cwd(),
-	            env: options.env || process.env,
-	            silent: options.silent || false,
-	            windowsVerbatimArguments: options.windowsVerbatimArguments || false,
-	            failOnStdErr: options.failOnStdErr || false,
-	            ignoreReturnCode: options.ignoreReturnCode || false,
-	            delay: options.delay || 10000
-	        };
-	        result.outStream = options.outStream || process.stdout;
-	        result.errStream = options.errStream || process.stderr;
-	        return result;
-	    }
-	    _getSpawnOptions(options, toolPath) {
-	        options = options || {};
-	        const result = {};
-	        result.cwd = options.cwd;
-	        result.env = options.env;
-	        result['windowsVerbatimArguments'] =
-	            options.windowsVerbatimArguments || this._isCmdFile();
-	        if (options.windowsVerbatimArguments) {
-	            result.argv0 = `"${toolPath}"`;
-	        }
-	        return result;
-	    }
-	    /**
-	     * Exec a tool.
-	     * Output will be streamed to the live console.
-	     * Returns promise with return code
-	     *
-	     * @param     tool     path to tool to exec
-	     * @param     options  optional exec options.  See ExecOptions
-	     * @returns   number
-	     */
-	    exec() {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            // root the tool path if it is unrooted and contains relative pathing
-	            if (!ioUtil.isRooted(this.toolPath) &&
-	                (this.toolPath.includes('/') ||
-	                    (IS_WINDOWS && this.toolPath.includes('\\')))) {
-	                // prefer options.cwd if it is specified, however options.cwd may also need to be rooted
-	                this.toolPath = path.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
-	            }
-	            // if the tool is only a file name, then resolve it from the PATH
-	            // otherwise verify it exists (add extension on Windows if necessary)
-	            this.toolPath = yield io.which(this.toolPath, true);
-	            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-	                this._debug(`exec tool: ${this.toolPath}`);
-	                this._debug('arguments:');
-	                for (const arg of this.args) {
-	                    this._debug(`   ${arg}`);
-	                }
-	                const optionsNonNull = this._cloneExecOptions(this.options);
-	                if (!optionsNonNull.silent && optionsNonNull.outStream) {
-	                    optionsNonNull.outStream.write(this._getCommandString(optionsNonNull) + os.EOL);
-	                }
-	                const state = new ExecState(optionsNonNull, this.toolPath);
-	                state.on('debug', (message) => {
-	                    this._debug(message);
-	                });
-	                if (this.options.cwd && !(yield ioUtil.exists(this.options.cwd))) {
-	                    return reject(new Error(`The cwd: ${this.options.cwd} does not exist!`));
-	                }
-	                const fileName = this._getSpawnFileName();
-	                const cp = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
-	                let stdbuffer = '';
-	                if (cp.stdout) {
-	                    cp.stdout.on('data', (data) => {
-	                        if (this.options.listeners && this.options.listeners.stdout) {
-	                            this.options.listeners.stdout(data);
-	                        }
-	                        if (!optionsNonNull.silent && optionsNonNull.outStream) {
-	                            optionsNonNull.outStream.write(data);
-	                        }
-	                        stdbuffer = this._processLineBuffer(data, stdbuffer, (line) => {
-	                            if (this.options.listeners && this.options.listeners.stdline) {
-	                                this.options.listeners.stdline(line);
-	                            }
-	                        });
-	                    });
-	                }
-	                let errbuffer = '';
-	                if (cp.stderr) {
-	                    cp.stderr.on('data', (data) => {
-	                        state.processStderr = true;
-	                        if (this.options.listeners && this.options.listeners.stderr) {
-	                            this.options.listeners.stderr(data);
-	                        }
-	                        if (!optionsNonNull.silent &&
-	                            optionsNonNull.errStream &&
-	                            optionsNonNull.outStream) {
-	                            const s = optionsNonNull.failOnStdErr
-	                                ? optionsNonNull.errStream
-	                                : optionsNonNull.outStream;
-	                            s.write(data);
-	                        }
-	                        errbuffer = this._processLineBuffer(data, errbuffer, (line) => {
-	                            if (this.options.listeners && this.options.listeners.errline) {
-	                                this.options.listeners.errline(line);
-	                            }
-	                        });
-	                    });
-	                }
-	                cp.on('error', (err) => {
-	                    state.processError = err.message;
-	                    state.processExited = true;
-	                    state.processClosed = true;
-	                    state.CheckComplete();
-	                });
-	                cp.on('exit', (code) => {
-	                    state.processExitCode = code;
-	                    state.processExited = true;
-	                    this._debug(`Exit code ${code} received from tool '${this.toolPath}'`);
-	                    state.CheckComplete();
-	                });
-	                cp.on('close', (code) => {
-	                    state.processExitCode = code;
-	                    state.processExited = true;
-	                    state.processClosed = true;
-	                    this._debug(`STDIO streams have closed for tool '${this.toolPath}'`);
-	                    state.CheckComplete();
-	                });
-	                state.on('done', (error, exitCode) => {
-	                    if (stdbuffer.length > 0) {
-	                        this.emit('stdline', stdbuffer);
-	                    }
-	                    if (errbuffer.length > 0) {
-	                        this.emit('errline', errbuffer);
-	                    }
-	                    cp.removeAllListeners();
-	                    if (error) {
-	                        reject(error);
-	                    }
-	                    else {
-	                        resolve(exitCode);
-	                    }
-	                });
-	                if (this.options.input) {
-	                    if (!cp.stdin) {
-	                        throw new Error('child process missing stdin');
-	                    }
-	                    cp.stdin.end(this.options.input);
-	                }
-	            }));
-	        });
-	    }
-	}
-	toolrunner.ToolRunner = ToolRunner;
-	/**
-	 * Convert an arg string to an array of args. Handles escaping
-	 *
-	 * @param    argString   string of arguments
-	 * @returns  string[]    array of arguments
-	 */
-	function argStringToArray(argString) {
-	    const args = [];
-	    let inQuotes = false;
-	    let escaped = false;
-	    let arg = '';
-	    function append(c) {
-	        // we only escape double quotes.
-	        if (escaped && c !== '"') {
-	            arg += '\\';
-	        }
-	        arg += c;
-	        escaped = false;
-	    }
-	    for (let i = 0; i < argString.length; i++) {
-	        const c = argString.charAt(i);
-	        if (c === '"') {
-	            if (!escaped) {
-	                inQuotes = !inQuotes;
-	            }
-	            else {
-	                append(c);
-	            }
-	            continue;
-	        }
-	        if (c === '\\' && escaped) {
-	            append(c);
-	            continue;
-	        }
-	        if (c === '\\' && inQuotes) {
-	            escaped = true;
-	            continue;
-	        }
-	        if (c === ' ' && !inQuotes) {
-	            if (arg.length > 0) {
-	                args.push(arg);
-	                arg = '';
-	            }
-	            continue;
-	        }
-	        append(c);
-	    }
-	    if (arg.length > 0) {
-	        args.push(arg.trim());
-	    }
-	    return args;
-	}
-	class ExecState extends events.EventEmitter {
-	    constructor(options, toolPath) {
-	        super();
-	        this.processClosed = false; // tracks whether the process has exited and stdio is closed
-	        this.processError = '';
-	        this.processExitCode = 0;
-	        this.processExited = false; // tracks whether the process has exited
-	        this.processStderr = false; // tracks whether stderr was written to
-	        this.delay = 10000; // 10 seconds
-	        this.done = false;
-	        this.timeout = null;
-	        if (!toolPath) {
-	            throw new Error('toolPath must not be empty');
-	        }
-	        this.options = options;
-	        this.toolPath = toolPath;
-	        if (options.delay) {
-	            this.delay = options.delay;
-	        }
-	    }
-	    CheckComplete() {
-	        if (this.done) {
-	            return;
-	        }
-	        if (this.processClosed) {
-	            this._setResult();
-	        }
-	        else if (this.processExited) {
-	            this.timeout = (0, timers_1.setTimeout)(ExecState.HandleTimeout, this.delay, this);
-	        }
-	    }
-	    _debug(message) {
-	        this.emit('debug', message);
-	    }
-	    _setResult() {
-	        // determine whether there is an error
-	        let error;
-	        if (this.processExited) {
-	            if (this.processError) {
-	                error = new Error(`There was an error when attempting to execute the process '${this.toolPath}'. This may indicate the process failed to start. Error: ${this.processError}`);
-	            }
-	            else if (this.processExitCode !== 0 && !this.options.ignoreReturnCode) {
-	                error = new Error(`The process '${this.toolPath}' failed with exit code ${this.processExitCode}`);
-	            }
-	            else if (this.processStderr && this.options.failOnStdErr) {
-	                error = new Error(`The process '${this.toolPath}' failed because one or more lines were written to the STDERR stream`);
-	            }
-	        }
-	        // clear the timeout
-	        if (this.timeout) {
-	            clearTimeout(this.timeout);
-	            this.timeout = null;
-	        }
-	        this.done = true;
-	        this.emit('done', error, this.processExitCode);
-	    }
-	    static HandleTimeout(state) {
-	        if (state.done) {
-	            return;
-	        }
-	        if (!state.processClosed && state.processExited) {
-	            const message = `The STDIO streams did not close within ${state.delay / 1000} seconds of the exit event from process '${state.toolPath}'. This may indicate a child process inherited the STDIO streams and has not yet exited.`;
-	            state._debug(message);
-	        }
-	        state._setResult();
-	    }
-	}
-	
-	return toolrunner;
-}
-
-var hasRequiredExec;
-
-function requireExec () {
-	if (hasRequiredExec) return exec;
-	hasRequiredExec = 1;
-	var __createBinding = (exec && exec.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    var desc = Object.getOwnPropertyDescriptor(m, k);
-	    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-	      desc = { enumerable: true, get: function() { return m[k]; } };
-	    }
-	    Object.defineProperty(o, k2, desc);
-	}) : (function(o, m, k, k2) {
-	    if (k2 === undefined) k2 = k;
-	    o[k2] = m[k];
-	}));
-	var __setModuleDefault = (exec && exec.__setModuleDefault) || (Object.create ? (function(o, v) {
-	    Object.defineProperty(o, "default", { enumerable: true, value: v });
-	}) : function(o, v) {
-	    o["default"] = v;
-	});
-	var __importStar = (exec && exec.__importStar) || (function () {
-	    var ownKeys = function(o) {
-	        ownKeys = Object.getOwnPropertyNames || function (o) {
-	            var ar = [];
-	            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-	            return ar;
-	        };
-	        return ownKeys(o);
-	    };
-	    return function (mod) {
-	        if (mod && mod.__esModule) return mod;
-	        var result = {};
-	        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-	        __setModuleDefault(result, mod);
-	        return result;
-	    };
-	})();
-	var __awaiter = (exec && exec.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(exec, "__esModule", { value: true });
-	exec.exec = exec$1;
-	exec.getExecOutput = getExecOutput;
-	const string_decoder_1 = require$$5;
-	const tr = __importStar(requireToolrunner());
-	/**
-	 * Exec a command.
-	 * Output will be streamed to the live console.
-	 * Returns promise with return code
-	 *
-	 * @param     commandLine        command to execute (can include additional args). Must be correctly escaped.
-	 * @param     args               optional arguments for tool. Escaping is handled by the lib.
-	 * @param     options            optional exec options.  See ExecOptions
-	 * @returns   Promise<number>    exit code
-	 */
-	function exec$1(commandLine, args, options) {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        const commandArgs = tr.argStringToArray(commandLine);
-	        if (commandArgs.length === 0) {
-	            throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
-	        }
-	        // Path to tool to execute should be first arg
-	        const toolPath = commandArgs[0];
-	        args = commandArgs.slice(1).concat(args || []);
-	        const runner = new tr.ToolRunner(toolPath, args, options);
-	        return runner.exec();
-	    });
-	}
-	/**
-	 * Exec a command and get the output.
-	 * Output will be streamed to the live console.
-	 * Returns promise with the exit code and collected stdout and stderr
-	 *
-	 * @param     commandLine           command to execute (can include additional args). Must be correctly escaped.
-	 * @param     args                  optional arguments for tool. Escaping is handled by the lib.
-	 * @param     options               optional exec options.  See ExecOptions
-	 * @returns   Promise<ExecOutput>   exit code, stdout, and stderr
-	 */
-	function getExecOutput(commandLine, args, options) {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        var _a, _b;
-	        let stdout = '';
-	        let stderr = '';
-	        //Using string decoder covers the case where a mult-byte character is split
-	        const stdoutDecoder = new string_decoder_1.StringDecoder('utf8');
-	        const stderrDecoder = new string_decoder_1.StringDecoder('utf8');
-	        const originalStdoutListener = (_a = options === null || options === void 0 ? void 0 : options.listeners) === null || _a === void 0 ? void 0 : _a.stdout;
-	        const originalStdErrListener = (_b = options === null || options === void 0 ? void 0 : options.listeners) === null || _b === void 0 ? void 0 : _b.stderr;
-	        const stdErrListener = (data) => {
-	            stderr += stderrDecoder.write(data);
-	            if (originalStdErrListener) {
-	                originalStdErrListener(data);
-	            }
-	        };
-	        const stdOutListener = (data) => {
-	            stdout += stdoutDecoder.write(data);
-	            if (originalStdoutListener) {
-	                originalStdoutListener(data);
-	            }
-	        };
-	        const listeners = Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.listeners), { stdout: stdOutListener, stderr: stdErrListener });
-	        const exitCode = yield exec$1(commandLine, args, Object.assign(Object.assign({}, options), { listeners }));
-	        //flush any remaining characters
-	        stdout += stdoutDecoder.end();
-	        stderr += stderrDecoder.end();
-	        return {
-	            exitCode,
-	            stdout,
-	            stderr
-	        };
-	    });
-	}
-	
-	return exec;
-}
-
-var hasRequiredPlatform;
-
-function requirePlatform () {
-	if (hasRequiredPlatform) return platform;
-	hasRequiredPlatform = 1;
-	(function (exports$1) {
-		var __createBinding = (platform && platform.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-		    if (k2 === undefined) k2 = k;
-		    var desc = Object.getOwnPropertyDescriptor(m, k);
-		    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-		      desc = { enumerable: true, get: function() { return m[k]; } };
-		    }
-		    Object.defineProperty(o, k2, desc);
-		}) : (function(o, m, k, k2) {
-		    if (k2 === undefined) k2 = k;
-		    o[k2] = m[k];
-		}));
-		var __setModuleDefault = (platform && platform.__setModuleDefault) || (Object.create ? (function(o, v) {
-		    Object.defineProperty(o, "default", { enumerable: true, value: v });
-		}) : function(o, v) {
-		    o["default"] = v;
-		});
-		var __importStar = (platform && platform.__importStar) || (function () {
-		    var ownKeys = function(o) {
-		        ownKeys = Object.getOwnPropertyNames || function (o) {
-		            var ar = [];
-		            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-		            return ar;
-		        };
-		        return ownKeys(o);
-		    };
-		    return function (mod) {
-		        if (mod && mod.__esModule) return mod;
-		        var result = {};
-		        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-		        __setModuleDefault(result, mod);
-		        return result;
-		    };
-		})();
-		var __awaiter = (platform && platform.__awaiter) || function (thisArg, _arguments, P, generator) {
-		    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-		    return new (P || (P = Promise))(function (resolve, reject) {
-		        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-		        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-		        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-		        step((generator = generator.apply(thisArg, _arguments || [])).next());
-		    });
-		};
-		var __importDefault = (platform && platform.__importDefault) || function (mod) {
-		    return (mod && mod.__esModule) ? mod : { "default": mod };
-		};
-		Object.defineProperty(exports$1, "__esModule", { value: true });
-		exports$1.isLinux = exports$1.isMacOS = exports$1.isWindows = exports$1.arch = exports$1.platform = void 0;
-		exports$1.getDetails = getDetails;
-		const os_1 = __importDefault(require$$0);
-		const exec = __importStar(requireExec());
-		const getWindowsInfo = () => __awaiter(void 0, void 0, void 0, function* () {
-		    const { stdout: version } = yield exec.getExecOutput('powershell -command "(Get-CimInstance -ClassName Win32_OperatingSystem).Version"', undefined, {
-		        silent: true
-		    });
-		    const { stdout: name } = yield exec.getExecOutput('powershell -command "(Get-CimInstance -ClassName Win32_OperatingSystem).Caption"', undefined, {
-		        silent: true
-		    });
-		    return {
-		        name: name.trim(),
-		        version: version.trim()
-		    };
-		});
-		const getMacOsInfo = () => __awaiter(void 0, void 0, void 0, function* () {
-		    var _a, _b, _c, _d;
-		    const { stdout } = yield exec.getExecOutput('sw_vers', undefined, {
-		        silent: true
-		    });
-		    const version = (_b = (_a = stdout.match(/ProductVersion:\s*(.+)/)) === null || _a === void 0 ? void 0 : _a[1]) !== null && _b !== void 0 ? _b : '';
-		    const name = (_d = (_c = stdout.match(/ProductName:\s*(.+)/)) === null || _c === void 0 ? void 0 : _c[1]) !== null && _d !== void 0 ? _d : '';
-		    return {
-		        name,
-		        version
-		    };
-		});
-		const getLinuxInfo = () => __awaiter(void 0, void 0, void 0, function* () {
-		    const { stdout } = yield exec.getExecOutput('lsb_release', ['-i', '-r', '-s'], {
-		        silent: true
-		    });
-		    const [name, version] = stdout.trim().split('\n');
-		    return {
-		        name,
-		        version
-		    };
-		});
-		exports$1.platform = os_1.default.platform();
-		exports$1.arch = os_1.default.arch();
-		exports$1.isWindows = exports$1.platform === 'win32';
-		exports$1.isMacOS = exports$1.platform === 'darwin';
-		exports$1.isLinux = exports$1.platform === 'linux';
-		function getDetails() {
-		    return __awaiter(this, void 0, void 0, function* () {
-		        return Object.assign(Object.assign({}, (yield (exports$1.isWindows
-		            ? getWindowsInfo()
-		            : exports$1.isMacOS
-		                ? getMacOsInfo()
-		                : getLinuxInfo()))), { platform: exports$1.platform,
-		            arch: exports$1.arch,
-		            isWindows: exports$1.isWindows,
-		            isMacOS: exports$1.isMacOS,
-		            isLinux: exports$1.isLinux });
-		    });
-		}
-		
-	} (platform));
-	return platform;
-}
-
-var hasRequiredCore;
-
-function requireCore () {
-	if (hasRequiredCore) return core;
-	hasRequiredCore = 1;
-	(function (exports$1) {
-		var __createBinding = (core && core.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-		    if (k2 === undefined) k2 = k;
-		    var desc = Object.getOwnPropertyDescriptor(m, k);
-		    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-		      desc = { enumerable: true, get: function() { return m[k]; } };
-		    }
-		    Object.defineProperty(o, k2, desc);
-		}) : (function(o, m, k, k2) {
-		    if (k2 === undefined) k2 = k;
-		    o[k2] = m[k];
-		}));
-		var __setModuleDefault = (core && core.__setModuleDefault) || (Object.create ? (function(o, v) {
-		    Object.defineProperty(o, "default", { enumerable: true, value: v });
-		}) : function(o, v) {
-		    o["default"] = v;
-		});
-		var __importStar = (core && core.__importStar) || (function () {
-		    var ownKeys = function(o) {
-		        ownKeys = Object.getOwnPropertyNames || function (o) {
-		            var ar = [];
-		            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-		            return ar;
-		        };
-		        return ownKeys(o);
-		    };
-		    return function (mod) {
-		        if (mod && mod.__esModule) return mod;
-		        var result = {};
-		        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-		        __setModuleDefault(result, mod);
-		        return result;
-		    };
-		})();
-		var __awaiter = (core && core.__awaiter) || function (thisArg, _arguments, P, generator) {
-		    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-		    return new (P || (P = Promise))(function (resolve, reject) {
-		        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-		        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-		        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-		        step((generator = generator.apply(thisArg, _arguments || [])).next());
-		    });
-		};
-		Object.defineProperty(exports$1, "__esModule", { value: true });
-		exports$1.platform = exports$1.toPlatformPath = exports$1.toWin32Path = exports$1.toPosixPath = exports$1.markdownSummary = exports$1.summary = exports$1.ExitCode = void 0;
-		exports$1.exportVariable = exportVariable;
-		exports$1.setSecret = setSecret;
-		exports$1.addPath = addPath;
-		exports$1.getInput = getInput;
-		exports$1.getMultilineInput = getMultilineInput;
-		exports$1.getBooleanInput = getBooleanInput;
-		exports$1.setOutput = setOutput;
-		exports$1.setCommandEcho = setCommandEcho;
-		exports$1.setFailed = setFailed;
-		exports$1.isDebug = isDebug;
-		exports$1.debug = debug;
-		exports$1.error = error;
-		exports$1.warning = warning;
-		exports$1.notice = notice;
-		exports$1.info = info;
-		exports$1.startGroup = startGroup;
-		exports$1.endGroup = endGroup;
-		exports$1.group = group;
-		exports$1.saveState = saveState;
-		exports$1.getState = getState;
-		exports$1.getIDToken = getIDToken;
-		const command_1 = requireCommand();
-		const file_command_1 = requireFileCommand();
-		const utils_1 = requireUtils$1();
-		const os = __importStar(require$$0);
-		const path = __importStar(require$$1$2);
-		const oidc_utils_1 = requireOidcUtils();
-		/**
-		 * The code to exit an action
-		 */
-		var ExitCode;
-		(function (ExitCode) {
-		    /**
-		     * A code indicating that the action was successful
-		     */
-		    ExitCode[ExitCode["Success"] = 0] = "Success";
-		    /**
-		     * A code indicating that the action was a failure
-		     */
-		    ExitCode[ExitCode["Failure"] = 1] = "Failure";
-		})(ExitCode || (exports$1.ExitCode = ExitCode = {}));
-		//-----------------------------------------------------------------------
-		// Variables
-		//-----------------------------------------------------------------------
-		/**
-		 * Sets env variable for this action and future actions in the job
-		 * @param name the name of the variable to set
-		 * @param val the value of the variable. Non-string values will be converted to a string via JSON.stringify
-		 */
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		function exportVariable(name, val) {
-		    const convertedVal = (0, utils_1.toCommandValue)(val);
-		    process.env[name] = convertedVal;
-		    const filePath = process.env['GITHUB_ENV'] || '';
-		    if (filePath) {
-		        return (0, file_command_1.issueFileCommand)('ENV', (0, file_command_1.prepareKeyValueMessage)(name, val));
-		    }
-		    (0, command_1.issueCommand)('set-env', { name }, convertedVal);
-		}
-		/**
-		 * Registers a secret which will get masked from logs
-		 *
-		 * @param secret - Value of the secret to be masked
-		 * @remarks
-		 * This function instructs the Actions runner to mask the specified value in any
-		 * logs produced during the workflow run. Once registered, the secret value will
-		 * be replaced with asterisks (***) whenever it appears in console output, logs,
-		 * or error messages.
-		 *
-		 * This is useful for protecting sensitive information such as:
-		 * - API keys
-		 * - Access tokens
-		 * - Authentication credentials
-		 * - URL parameters containing signatures (SAS tokens)
-		 *
-		 * Note that masking only affects future logs; any previous appearances of the
-		 * secret in logs before calling this function will remain unmasked.
-		 *
-		 * @example
-		 * ```typescript
-		 * // Register an API token as a secret
-		 * const apiToken = "abc123xyz456";
-		 * setSecret(apiToken);
-		 *
-		 * // Now any logs containing this value will show *** instead
-		 * console.log(`Using token: ${apiToken}`); // Outputs: "Using token: ***"
-		 * ```
-		 */
-		function setSecret(secret) {
-		    (0, command_1.issueCommand)('add-mask', {}, secret);
-		}
-		/**
-		 * Prepends inputPath to the PATH (for this action and future actions)
-		 * @param inputPath
-		 */
-		function addPath(inputPath) {
-		    const filePath = process.env['GITHUB_PATH'] || '';
-		    if (filePath) {
-		        (0, file_command_1.issueFileCommand)('PATH', inputPath);
-		    }
-		    else {
-		        (0, command_1.issueCommand)('add-path', {}, inputPath);
-		    }
-		    process.env['PATH'] = `${inputPath}${path.delimiter}${process.env['PATH']}`;
-		}
-		/**
-		 * Gets the value of an input.
-		 * Unless trimWhitespace is set to false in InputOptions, the value is also trimmed.
-		 * Returns an empty string if the value is not defined.
-		 *
-		 * @param     name     name of the input to get
-		 * @param     options  optional. See InputOptions.
-		 * @returns   string
-		 */
-		function getInput(name, options) {
-		    const val = process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`] || '';
-		    if (options && options.required && !val) {
-		        throw new Error(`Input required and not supplied: ${name}`);
-		    }
-		    if (options && options.trimWhitespace === false) {
-		        return val;
-		    }
-		    return val.trim();
-		}
-		/**
-		 * Gets the values of an multiline input.  Each value is also trimmed.
-		 *
-		 * @param     name     name of the input to get
-		 * @param     options  optional. See InputOptions.
-		 * @returns   string[]
-		 *
-		 */
-		function getMultilineInput(name, options) {
-		    const inputs = getInput(name, options)
-		        .split('\n')
-		        .filter(x => x !== '');
-		    if (options && options.trimWhitespace === false) {
-		        return inputs;
-		    }
-		    return inputs.map(input => input.trim());
-		}
-		/**
-		 * Gets the input value of the boolean type in the YAML 1.2 "core schema" specification.
-		 * Support boolean input list: `true | True | TRUE | false | False | FALSE` .
-		 * The return value is also in boolean type.
-		 * ref: https://yaml.org/spec/1.2/spec.html#id2804923
-		 *
-		 * @param     name     name of the input to get
-		 * @param     options  optional. See InputOptions.
-		 * @returns   boolean
-		 */
-		function getBooleanInput(name, options) {
-		    const trueValue = ['true', 'True', 'TRUE'];
-		    const falseValue = ['false', 'False', 'FALSE'];
-		    const val = getInput(name, options);
-		    if (trueValue.includes(val))
-		        return true;
-		    if (falseValue.includes(val))
-		        return false;
-		    throw new TypeError(`Input does not meet YAML 1.2 "Core Schema" specification: ${name}\n` +
-		        `Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
-		}
-		/**
-		 * Sets the value of an output.
-		 *
-		 * @param     name     name of the output to set
-		 * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
-		 */
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		function setOutput(name, value) {
-		    const filePath = process.env['GITHUB_OUTPUT'] || '';
-		    if (filePath) {
-		        return (0, file_command_1.issueFileCommand)('OUTPUT', (0, file_command_1.prepareKeyValueMessage)(name, value));
-		    }
-		    process.stdout.write(os.EOL);
-		    (0, command_1.issueCommand)('set-output', { name }, (0, utils_1.toCommandValue)(value));
-		}
-		/**
-		 * Enables or disables the echoing of commands into stdout for the rest of the step.
-		 * Echoing is disabled by default if ACTIONS_STEP_DEBUG is not set.
-		 *
-		 */
-		function setCommandEcho(enabled) {
-		    (0, command_1.issue)('echo', enabled ? 'on' : 'off');
-		}
-		//-----------------------------------------------------------------------
-		// Results
-		//-----------------------------------------------------------------------
-		/**
-		 * Sets the action status to failed.
-		 * When the action exits it will be with an exit code of 1
-		 * @param message add error issue message
-		 */
-		function setFailed(message) {
-		    process.exitCode = ExitCode.Failure;
-		    error(message);
-		}
-		//-----------------------------------------------------------------------
-		// Logging Commands
-		//-----------------------------------------------------------------------
-		/**
-		 * Gets whether Actions Step Debug is on or not
-		 */
-		function isDebug() {
-		    return process.env['RUNNER_DEBUG'] === '1';
-		}
-		/**
-		 * Writes debug message to user log
-		 * @param message debug message
-		 */
-		function debug(message) {
-		    (0, command_1.issueCommand)('debug', {}, message);
-		}
-		/**
-		 * Adds an error issue
-		 * @param message error issue message. Errors will be converted to string via toString()
-		 * @param properties optional properties to add to the annotation.
-		 */
-		function error(message, properties = {}) {
-		    (0, command_1.issueCommand)('error', (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
-		}
-		/**
-		 * Adds a warning issue
-		 * @param message warning issue message. Errors will be converted to string via toString()
-		 * @param properties optional properties to add to the annotation.
-		 */
-		function warning(message, properties = {}) {
-		    (0, command_1.issueCommand)('warning', (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
-		}
-		/**
-		 * Adds a notice issue
-		 * @param message notice issue message. Errors will be converted to string via toString()
-		 * @param properties optional properties to add to the annotation.
-		 */
-		function notice(message, properties = {}) {
-		    (0, command_1.issueCommand)('notice', (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
-		}
-		/**
-		 * Writes info to log with console.log.
-		 * @param message info message
-		 */
-		function info(message) {
-		    process.stdout.write(message + os.EOL);
-		}
-		/**
-		 * Begin an output group.
-		 *
-		 * Output until the next `groupEnd` will be foldable in this group
-		 *
-		 * @param name The name of the output group
-		 */
-		function startGroup(name) {
-		    (0, command_1.issue)('group', name);
-		}
-		/**
-		 * End an output group.
-		 */
-		function endGroup() {
-		    (0, command_1.issue)('endgroup');
-		}
-		/**
-		 * Wrap an asynchronous function call in a group.
-		 *
-		 * Returns the same type as the function itself.
-		 *
-		 * @param name The name of the group
-		 * @param fn The function to wrap in the group
-		 */
-		function group(name, fn) {
-		    return __awaiter(this, void 0, void 0, function* () {
-		        startGroup(name);
-		        let result;
-		        try {
-		            result = yield fn();
-		        }
-		        finally {
-		            endGroup();
-		        }
-		        return result;
-		    });
-		}
-		//-----------------------------------------------------------------------
-		// Wrapper action state
-		//-----------------------------------------------------------------------
-		/**
-		 * Saves state for current action, the state can only be retrieved by this action's post job execution.
-		 *
-		 * @param     name     name of the state to store
-		 * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
-		 */
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		function saveState(name, value) {
-		    const filePath = process.env['GITHUB_STATE'] || '';
-		    if (filePath) {
-		        return (0, file_command_1.issueFileCommand)('STATE', (0, file_command_1.prepareKeyValueMessage)(name, value));
-		    }
-		    (0, command_1.issueCommand)('save-state', { name }, (0, utils_1.toCommandValue)(value));
-		}
-		/**
-		 * Gets the value of an state set by this action's main execution.
-		 *
-		 * @param     name     name of the state to get
-		 * @returns   string
-		 */
-		function getState(name) {
-		    return process.env[`STATE_${name}`] || '';
-		}
-		function getIDToken(aud) {
-		    return __awaiter(this, void 0, void 0, function* () {
-		        return yield oidc_utils_1.OidcClient.getIDToken(aud);
-		    });
-		}
-		/**
-		 * Summary exports
-		 */
-		var summary_1 = requireSummary();
-		Object.defineProperty(exports$1, "summary", { enumerable: true, get: function () { return summary_1.summary; } });
-		/**
-		 * @deprecated use core.summary
-		 */
-		var summary_2 = requireSummary();
-		Object.defineProperty(exports$1, "markdownSummary", { enumerable: true, get: function () { return summary_2.markdownSummary; } });
-		/**
-		 * Path exports
-		 */
-		var path_utils_1 = requirePathUtils();
-		Object.defineProperty(exports$1, "toPosixPath", { enumerable: true, get: function () { return path_utils_1.toPosixPath; } });
-		Object.defineProperty(exports$1, "toWin32Path", { enumerable: true, get: function () { return path_utils_1.toWin32Path; } });
-		Object.defineProperty(exports$1, "toPlatformPath", { enumerable: true, get: function () { return path_utils_1.toPlatformPath; } });
-		/**
-		 * Platform utilities exports
-		 */
-		exports$1.platform = __importStar(requirePlatform());
-		
-	} (core));
-	return core;
-}
-
-var coreExports = requireCore();
 
 /**
  * Safely adds an array to attributes if it contains non-empty strings or valid Label objects.
@@ -31282,11 +28968,11 @@ async function createIncident(apiKey, title, createAsPublic, url, kind, parentId
         const data = (await response.json());
         return data.data.id;
     }
-    catch (error) {
-        const errorMessage = `Failed to create incident: ${error instanceof Error ? error.message : String(error)}`;
-        coreExports.error(errorMessage);
-        coreExports.debug(`Incident Body:\n${incidentBody}`);
-        throw error;
+    catch (error$1) {
+        const errorMessage = `Failed to create incident: ${error$1 instanceof Error ? error$1.message : String(error$1)}`;
+        error(errorMessage);
+        debug(`Incident Body:\n${incidentBody}`);
+        throw error$1;
     }
 }
 
@@ -31311,7 +28997,7 @@ async function getServiceId(service, apiKey) {
         }
         const data = (await response.json());
         if (!data.data || data.data.length === 0) {
-            coreExports.warning(`Service '${service}' not found`);
+            warning(`Service '${service}' not found`);
             return '';
         }
         return data.data[0].id;
@@ -31475,7 +29161,7 @@ async function getUserId(email, apiKey) {
         }
         const data = (await response.json());
         if (!data.data || data.data.length === 0) {
-            coreExports.warning(`User '${email}' not found`);
+            warning(`User '${email}' not found`);
             return '';
         }
         return data.data[0].id;
@@ -31551,56 +29237,56 @@ async function run() {
     try {
         // The API key is secret and shall not be logged in any way.
         // The API key shall be used during requests but never logged or stored.
-        const apiKey = coreExports.getInput('api_key');
+        const apiKey = getInput('api_key');
         // other inputs
-        const alertIds = coreExports.getInput('alert_ids').split(',');
-        const causes = coreExports.getInput('causes').split(',');
-        const createAsPublicFlag = coreExports.getInput('create_public_incident') == 'true';
-        const duplicateIncidentId = coreExports.getInput('duplicate_incident_id');
-        const environments = coreExports.getInput('environments').split(',');
-        const functionalities = coreExports.getInput('functionalities')
+        const alertIds = getInput('alert_ids').split(',');
+        const causes = getInput('causes').split(',');
+        const createAsPublicFlag = getInput('create_public_incident') == 'true';
+        const duplicateIncidentId = getInput('duplicate_incident_id');
+        const environments = getInput('environments').split(',');
+        const functionalities = getInput('functionalities')
             .split(',');
-        const googleDriveParentId = coreExports.getInput('google_drive_parent_id');
-        const googleDriveUrl = coreExports.getInput('google_drive_url');
-        const incidentTypes = coreExports.getInput('incident_types').split(',');
-        const kind = coreExports.getInput('kind');
-        const labels = createLabelsFromString(coreExports.getInput('labels'));
-        const notifyEmails = coreExports.getInput('notify_emails').split(',');
-        const parentIncidentId = coreExports.getInput('parent_incident_id');
-        const services = coreExports.getInput('services').split(',');
-        const severity = coreExports.getInput('severity');
-        const slackChannelId = coreExports.getInput('slack_channel_id');
-        const slackChannelName = coreExports.getInput('slack_channel_name');
-        const slackChannelUrl = coreExports.getInput('slack_channel_url');
-        const summary = coreExports.getInput('summary');
-        const teams = coreExports.getInput('teams').split(',');
-        const title = coreExports.getInput('title');
-        const url = coreExports.getInput('url');
-        const userEmail = coreExports.getInput('user_email');
+        const googleDriveParentId = getInput('google_drive_parent_id');
+        const googleDriveUrl = getInput('google_drive_url');
+        const incidentTypes = getInput('incident_types').split(',');
+        const kind = getInput('kind');
+        const labels = createLabelsFromString(getInput('labels'));
+        const notifyEmails = getInput('notify_emails').split(',');
+        const parentIncidentId = getInput('parent_incident_id');
+        const services = getInput('services').split(',');
+        const severity = getInput('severity');
+        const slackChannelId = getInput('slack_channel_id');
+        const slackChannelName = getInput('slack_channel_name');
+        const slackChannelUrl = getInput('slack_channel_url');
+        const summary = getInput('summary');
+        const teams = getInput('teams').split(',');
+        const title = getInput('title');
+        const url = getInput('url');
+        const userEmail = getInput('user_email');
         // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-        coreExports.debug(`Title: ${title}`);
-        coreExports.debug(`Kind: ${kind}`);
-        coreExports.debug(`Parent Incident ID: ${parentIncidentId}`);
-        coreExports.debug(`Duplicate Incident ID: ${duplicateIncidentId}`);
-        coreExports.debug(`Create as Public Incident: ${createAsPublicFlag}`);
-        coreExports.debug(`Summary: ${summary}`);
-        coreExports.debug(`User Email: ${userEmail}`);
-        coreExports.debug(`Alert IDs: ${alertIds}`);
-        coreExports.debug(`Environments: ${environments}`);
-        coreExports.debug(`Incident Types: ${incidentTypes}`);
-        coreExports.debug(`Services: ${services}`);
-        coreExports.debug(`Functionalities: ${functionalities}`);
-        coreExports.debug(`Teams: ${teams}`);
-        coreExports.debug(`Causes: ${causes}`);
-        coreExports.debug(`Labels: ${labels}`);
-        coreExports.debug(`URL: ${url}`);
-        coreExports.debug(`Slack Channel Name: ${slackChannelName}`);
-        coreExports.debug(`Slack Channel ID: ${slackChannelId}`);
-        coreExports.debug(`Slack Channel URL: ${slackChannelUrl}`);
-        coreExports.debug(`Google Drive Parent ID: ${googleDriveParentId}`);
-        coreExports.debug(`Google Drive URL: ${googleDriveUrl}`);
-        coreExports.debug(`Notify Emails: ${notifyEmails}`);
-        coreExports.debug(`Api Key Length: ${apiKey.length}`); // Do not log the actual API key
+        debug(`Title: ${title}`);
+        debug(`Kind: ${kind}`);
+        debug(`Parent Incident ID: ${parentIncidentId}`);
+        debug(`Duplicate Incident ID: ${duplicateIncidentId}`);
+        debug(`Create as Public Incident: ${createAsPublicFlag}`);
+        debug(`Summary: ${summary}`);
+        debug(`User Email: ${userEmail}`);
+        debug(`Alert IDs: ${alertIds}`);
+        debug(`Environments: ${environments}`);
+        debug(`Incident Types: ${incidentTypes}`);
+        debug(`Services: ${services}`);
+        debug(`Functionalities: ${functionalities}`);
+        debug(`Teams: ${teams}`);
+        debug(`Causes: ${causes}`);
+        debug(`Labels: ${labels}`);
+        debug(`URL: ${url}`);
+        debug(`Slack Channel Name: ${slackChannelName}`);
+        debug(`Slack Channel ID: ${slackChannelId}`);
+        debug(`Slack Channel URL: ${slackChannelUrl}`);
+        debug(`Google Drive Parent ID: ${googleDriveParentId}`);
+        debug(`Google Drive URL: ${googleDriveUrl}`);
+        debug(`Notify Emails: ${notifyEmails}`);
+        debug(`Api Key Length: ${apiKey.length}`); // Do not log the actual API key
         // verify kind is valid
         const validKinds = [
             'test',
@@ -31635,7 +29321,7 @@ async function run() {
         let userId = '';
         if (userEmail !== '') {
             userId = await getUserId(userEmail, apiKey);
-            coreExports.debug(`User ID: ${userId}`);
+            debug(`User ID: ${userId}`);
         }
         // Set up environment IDs
         const environmentIds = [];
@@ -31674,12 +29360,12 @@ async function run() {
         // Create the incident
         const incidentId = await createIncident(apiKey, title, createAsPublicFlag, url, kind, parentIncidentId, duplicateIncidentId, summary, userId, severityId, alertIds, environmentIds, incidentTypeIds, serviceIds, functionalityIds, teamIds, causeIds, labels, slackChannelName, slackChannelId, slackChannelUrl, googleDriveParentId, googleDriveUrl, notifyEmails);
         // Set outputs for other workflow steps to use
-        coreExports.setOutput('incident-id', incidentId);
+        setOutput('incident-id', incidentId);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
         if (error instanceof Error)
-            coreExports.setFailed(error.message);
+            setFailed(error.message);
     }
 }
 
